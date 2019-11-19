@@ -18,7 +18,7 @@ function run(){
     export job_id="fme_${now}"
     TMP_DIR=$(mktemp -d -t $job_id)
 
-    python -m fmnist.features.build_features \
+    python -m fmnist.features.build \
         --train-data "gs://${GCS_DATA}/data/"
 }
 

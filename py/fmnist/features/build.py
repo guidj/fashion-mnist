@@ -98,7 +98,6 @@ def embeddings_fn(model: keras.Model, *inputs):
 def export_fn(path, array):
     import tempfile
     import uuid
-    # Add npz to prevent
     temporary_path = os.path.join(tempfile.gettempdir(), '{}.npz'.format(uuid.uuid4()))
     with open(temporary_path, 'wb') as fp:
         np.savez(fp, array)
@@ -132,10 +131,6 @@ def main():
     # Check the data size whether it is as per tensorflow and VGG19 requirement
     logger.info('X: (%s), X_val: (%s), y: (%s), y_val: (%s)', fX_train.shape, fX_val.shape, y_train.shape, y_val.shape)
 
-    # Now, rather than trying to use the final layer, an intermediary will be used instead.
-    # From past publications around learned traits in convoluational layers,
-    # some of the middle early layers tend to have for shape related information.
-    # FCNN can't really take advantage of them, but they be more informative than the final layers.
     logger.info('Loading VGG19')
     model_vgg19 = load_model_fn(image_size=IMAGE_SIZE, num_classes=NUM_CLASSES)
 

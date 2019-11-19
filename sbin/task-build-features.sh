@@ -15,7 +15,7 @@ function run(){
     export now=`date +%s`
     export job_id="fme_${now}"
     gcloud ai-platform jobs submit training ${job_id} \
-        --module-name=fmnist.features.build_features \
+        --module-name=fmnist.features.build \
         --job-dir="gs://${GCS_DATA}/ai-platform/jobs/${job_id}" \
         --labels=motto=fff \
         --package-path=${BASE}/py/fmnist \

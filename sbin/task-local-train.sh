@@ -17,9 +17,11 @@ function run(){
     export now=`date +%s`
     export job_id="fme_${now}"
     TMP_DIR=$(mktemp -d -t $job_id)
-    python -m fmnist.models.train_model \
+    python -m fmnist.models.train \
         --train-data "${HOME}/code/fashion-mnist/data" \
-        --model-dir "${TMP_DIR}"
+        --job-dir "${TMP_DIR}/job_dir" \
+        --model-dir "${TMP_DIR}/model_dir" \
+        --num-epochs 5
 }
 
 run "$@"
