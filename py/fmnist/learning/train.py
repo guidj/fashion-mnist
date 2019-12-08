@@ -4,7 +4,7 @@ import os.path
 
 from fmnist import constants
 from fmnist.models import task
-from fmnist.models.model import create_model
+from fmnist.models import model
 
 logger = logging.getLogger('tensorflow')
 
@@ -67,21 +67,21 @@ def main():
     # Build the Estimator
     logger.info('Creating model spec')
 
-    model = create_model(job_dir=args.job_dir,
-                         learning_rate=args.lr,
-                         dropout_rate=args.dropout_rate,
-                         num_classes=constants.FMNIST_NUM_CLASSES,
-                         activation=args.activation,
-                         num_layers=args.num_layers)
+    m = model.create_model(job_dir=args.job_dir,
+                           learning_rate=args.lr,
+                           dropout_rate=args.dropout_rate,
+                           num_classes=constants.FMNIST_NUM_CLASSES,
+                           activation=args.activation,
+                           num_layers=args.num_layers)
 
     logger.info('Starting training')
 
-    model.fit(trn_dataset)
-    results = model.evaluate(tst_dataset)
-    for i, metric in enumerate(model.metrics):
+    m.fit(trn_dataset)
+    results = m.evaluate(tst_dataset)
+    for i, metric in enumerate(m.metrics):
         logger.info('%s -> %s', metric.name, results[i])
 
-    task.export_model(model, args.model_dir)
+    task.export_model(m, args.model_dir)
 
 
 if __name__ == '__main__':

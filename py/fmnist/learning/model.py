@@ -3,6 +3,7 @@ from typing import Dict, Any, List
 import tensorflow as tf
 
 from fmnist import xmath, constants
+from fmnist.models import metrics
 
 
 def feature_columns_spec() -> List[Any]:
@@ -29,6 +30,20 @@ def create_model(job_dir: str, learning_rate: float, dropout_rate: float, num_cl
     layers.append(final_layer)
 
     tf.summary.histogram('layer-softmax', final_layer.variables)
+
+    recall_metrics = [
+        metrics.SingleOutRecall(name=class_name, class_id=label_index[class_name])
+        for class_name, class_id in label_index.items()
+    ]
+    precision_metrics = [
+        metrics.SingleOutPrecision(name=class_name, class_id=label_index[class_name])
+        for class_name, class_id in label_index.items()
+    ]
+    global_metrics = [
+        tf.keras.metrics.SparseCategoricalAccuracy(),
+        metrics.MultiClassF1(num_classes=num_classes,
+                             class_weights=[class_weights[reverse_label_index[i]] for i in range(num_classes)])
+    ]
 
     model = tf.keras.Sequential(layers)
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
