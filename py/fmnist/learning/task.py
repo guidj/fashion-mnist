@@ -7,8 +7,8 @@ import tensorflow as tf
 from tensorflow_core.python.keras.models import Model
 
 from fmnist import xmath, constants
-from fmnist.models import model
-
+from fmnist.learning import model
+from fmnist.learning import metrics
 
 logger = logging.getLogger('tensorflow')
 
