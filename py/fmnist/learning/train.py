@@ -3,8 +3,9 @@ import logging
 import os.path
 
 from fmnist import constants
-from fmnist.models import task
-from fmnist.models import model
+from fmnist.learning import task
+from fmnist.learning import model
+from fmnist.data import metadata
 
 logger = logging.getLogger('tensorflow')
 
@@ -15,7 +16,7 @@ def parse_args() -> argparse.Namespace:
     :return: :class:`ArgumentParser` instance
     """
     arg_parser = argparse.ArgumentParser(description='FMNIST (VGG19 Embeddings) Deep Neural Network')
-    arg_parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
+    arg_parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate')
     arg_parser.add_argument('--dropout-rate', type=float, default=0.3, help='Dropout rate')
     arg_parser.add_argument('--num-layers', type=int, default=8,
                             help='Use this to create a deep model, so you can see trade-offs in compute vs IO')
@@ -67,12 +68,14 @@ def main():
     # Build the Estimator
     logger.info('Creating model spec')
 
-    m = model.create_model(job_dir=args.job_dir,
-                           learning_rate=args.lr,
-                           dropout_rate=args.dropout_rate,
-                           num_classes=constants.FMNIST_NUM_CLASSES,
-                           activation=args.activation,
-                           num_layers=args.num_layers)
+    m = model.FCNN.create_model(job_dir=args.job_dir,
+                                learning_rate=args.lr,
+                                dropout_rate=args.dropout_rate,
+                                num_classes=constants.FMNIST_NUM_CLASSES,
+                                activation=args.activation,
+                                num_layers=args.num_layers,
+                                label_index=metadata.LABEL_INDEX,
+                                label_weights=metadata.LABEL_WEIGHTS)
 
     logger.info('Starting training')
 

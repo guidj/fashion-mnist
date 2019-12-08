@@ -3,58 +3,50 @@ from typing import Dict, Any, List
 import tensorflow as tf
 
 from fmnist import xmath, constants
-from fmnist.models import metrics
+from fmnist.learning import metrics
 
 
-def feature_columns_spec() -> List[Any]:
-    embedding_size = xmath.SeqOp.multiply(constants.FMNIST_EMBEDDING_DIMENSIONS)
-    return [tf.feature_column.numeric_column('image_embedding',
-                                             shape=(embedding_size,))]
-
-
-def create_model(job_dir: str, learning_rate: float, dropout_rate: float, num_classes: int, activation: bool,
-                 num_layers: int) -> tf.keras.models.Model:
+class FCNN(object):
     """
-    Creates a model function
-    :return: model_fn of type (features_dict, labels, mode) -> :class:`tf.estimator.EstimatorSpec`
+    Fully Connected Neural Network
     """
-    feature_layer = tf.keras.layers.DenseFeatures(feature_columns_spec(), name='input')
+    @classmethod
+    def feature_columns_spec(cls) -> List[Any]:
+        embedding_size = xmath.SeqOp.multiply(constants.FMNIST_EMBEDDING_DIMENSIONS)
+        return [tf.feature_column.numeric_column('image_embedding',
+                                                 shape=(embedding_size,))]
 
-    layers = [feature_layer]
+    @classmethod
+    def feature_spec(cls) -> Dict[str, Any]:
+        return {
+            'image_embedding': tf.io.FixedLenFeature([xmath.SeqOp.multiply(constants.FMNIST_EMBEDDING_DIMENSIONS)],
+                                                     tf.float32),
+            'label': tf.io.FixedLenFeature([], tf.int64)
+        }
 
-    for _ in range(num_layers):
-        layers.append(tf.keras.layers.Dense(1024, activation='relu' if activation else None))
-        layers.append(tf.keras.layers.Dropout(dropout_rate))
+    @classmethod
+    def create_model(cls, job_dir: str, learning_rate: float, dropout_rate: float, num_classes: int, activation: bool,
+                     num_layers: int, label_index: Dict[str, int],
+                     label_weights: Dict[str, float]) -> tf.keras.models.Model:
+        """
+        Creates a model function
+        :return: model_fn of type (features_dict, labels, mode) -> :class:`tf.estimator.EstimatorSpec`
+        """
+        feature_layer = tf.keras.layers.DenseFeatures(cls.feature_columns_spec(), name='input')
 
-    final_layer = tf.keras.layers.Dense(num_classes, activation='softmax', name='softmax')
-    layers.append(final_layer)
+        layers = [feature_layer]
 
-    tf.summary.histogram('layer-softmax', final_layer.variables)
+        for _ in range(num_layers):
+            layers.append(tf.keras.layers.Dense(1024, activation='relu' if activation else None))
+            layers.append(tf.keras.layers.Dropout(dropout_rate))
 
-    recall_metrics = [
-        metrics.SingleOutRecall(name=class_name, class_id=label_index[class_name])
-        for class_name, class_id in label_index.items()
-    ]
-    precision_metrics = [
-        metrics.SingleOutPrecision(name=class_name, class_id=label_index[class_name])
-        for class_name, class_id in label_index.items()
-    ]
-    global_metrics = [
-        tf.keras.metrics.SparseCategoricalAccuracy(),
-        metrics.MultiClassF1(num_classes=num_classes,
-                             class_weights=[class_weights[reverse_label_index[i]] for i in range(num_classes)])
-    ]
+        final_layer = tf.keras.layers.Dense(num_classes, activation='softmax', name='softmax')
+        layers.append(final_layer)
 
-    model = tf.keras.Sequential(layers)
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
-                  loss='sparse_categorical_crossentropy',
-                  metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-    return model
+        tf.summary.histogram('layer-softmax', final_layer.variables)
 
-
-def feature_spec() -> Dict[str, Any]:
-    return {
-        'image_embedding': tf.io.FixedLenFeature([xmath.SeqOp.multiply(constants.FMNIST_EMBEDDING_DIMENSIONS)],
-                                                 tf.float32),
-        'label': tf.io.FixedLenFeature([], tf.int64)
-    }
+        model = tf.keras.Sequential(layers)
+        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+                      loss='sparse_categorical_crossentropy',
+                      metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+        return model
