@@ -14,12 +14,14 @@ function run(){
 
     export PYTHONPATH=$PYTHONPATH:${BASE}/py/dist/fmnist-0.1.0-py3.7.egg
 
-    export now=`date +%s`
-    export job_id="fme_${now}"
+    now=`date +%s`
+    job_id="fme_${now}-XXXXXXX"
     TMP_DIR=$(mktemp -d -t $job_id)
 
     python -m fmnist.features.build \
-        --train-data "gs://${GCS_DATA}/data/"
+        --train-data "${BASE}/data" \
+        --batch-size 16 \
+        --job-dir "${TMP_DIR}/job_dir"
 }
 
 run "$@"

@@ -14,8 +14,8 @@ function run(){
 
     export PYTHONPATH=$PYTHONPATH:${BASE}/py/dist/fmnist-0.1.0-py3.7.egg
 
-    export now=`date +%s`
-    export job_id="fme_${now}"
+    now=`date +%s`
+    job_id="fme_${now}-XXXXXXX"
     TMP_DIR=$(mktemp -d -t $job_id)
     python -m fmnist.learning.predict \
         --train-data "${HOME}/code/fashion-mnist/data" \
