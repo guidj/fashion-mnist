@@ -1,15 +1,15 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 import tensorflow as tf
 
 from fmnist import xmath, constants
-from fmnist.learning import metrics
 
 
 class FCNN(object):
     """
     Fully Connected Neural Network
     """
+
     @classmethod
     def feature_columns_spec(cls) -> List[Any]:
         embedding_size = xmath.SeqOp.multiply(constants.FMNIST_EMBEDDING_DIMENSIONS)
@@ -25,8 +25,8 @@ class FCNN(object):
         }
 
     @classmethod
-    def create_model(cls, job_dir: str, learning_rate: float, dropout_rate: float, num_classes: int, activation: bool,
-                     num_layers: int, label_index: Dict[str, int],
+    def create_model(cls, job_dir: str, learning_rate: float, dropout_rate: float, num_classes: int,
+                     activation: Optional[str], num_layers: int, layer_size: int, label_index: Dict[str, int],
                      label_weights: Dict[str, float]) -> tf.keras.models.Model:
         """
         Creates a model function
@@ -37,7 +37,7 @@ class FCNN(object):
         layers = [feature_layer]
 
         for _ in range(num_layers):
-            layers.append(tf.keras.layers.Dense(1024, activation='relu' if activation else None))
+            layers.append(tf.keras.layers.Dense(layer_size, activation=activation))
             layers.append(tf.keras.layers.Dropout(dropout_rate))
 
         final_layer = tf.keras.layers.Dense(num_classes, activation='softmax', name='softmax')
