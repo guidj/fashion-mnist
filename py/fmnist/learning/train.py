@@ -54,7 +54,7 @@ def train(base_data_dir: str, num_threads: int, buffer_size: int, batch_size: in
                                       num_threads=num_threads,
                                       buffer_size=buffer_size,
                                       batch_size=batch_size,
-                                      num_epochs=num_epochs,
+                                      num_epochs=1,
                                       shuffle=shuffle)
     tst_dataset = task.build_features(tst_x_path, tst_y_path,
                                       num_threads=num_threads,
@@ -79,7 +79,7 @@ def train(base_data_dir: str, num_threads: int, buffer_size: int, batch_size: in
     logger.info('Starting training')
 
     # verbose=2 logs per epoch
-    m.fit(trn_dataset, verbose=2)
+    m.fit(trn_dataset, epochs=num_epochs, verbose=2)
     results = m.evaluate(tst_dataset)
     loss, metrics_values = results[0], results[1:]
 
