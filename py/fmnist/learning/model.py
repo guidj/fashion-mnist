@@ -25,7 +25,7 @@ class FCNN(object):
         }
 
     @classmethod
-    def create_model(cls, job_dir: str, learning_rate: float, dropout_rate: float, num_classes: int,
+    def create_model(cls, learning_rate: float, dropout_rate: float, num_classes: int,
                      activation: Optional[str], num_layers: int, layer_size: int, label_index: Dict[str, int],
                      label_weights: Dict[str, float]) -> tf.keras.models.Model:
         """

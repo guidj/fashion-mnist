@@ -4,6 +4,8 @@ import os.path
 import pathlib
 from typing import Dict, Any, Tuple
 
+import tensorflow as tf
+
 from fmnist import constants
 from fmnist.data import metadata
 from fmnist.learning import model
@@ -66,8 +68,7 @@ def train(base_data_dir: str, num_threads: int, buffer_size: int, batch_size: in
     # Build the Estimator
     logger.info('Creating model spec')
 
-    m = model.FCNN.create_model(job_dir=job_dir,
-                                learning_rate=learning_rate,
+    m = model.FCNN.create_model(learning_rate=learning_rate,
                                 dropout_rate=dropout_rate,
                                 num_classes=constants.FMNIST_NUM_CLASSES,
                                 activation=activation,
@@ -76,11 +77,14 @@ def train(base_data_dir: str, num_threads: int, buffer_size: int, batch_size: in
                                 label_index=metadata.LABEL_INDEX,
                                 label_weights=metadata.LABEL_WEIGHTS)
 
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=job_dir, histogram_freq=1, update_freq='batch')
+    callbacks = [tensorboard_callback]
+
     logger.info('Starting training')
 
     # verbose=2 logs per epoch
-    m.fit(trn_dataset, epochs=num_epochs, verbose=2)
-    results = m.evaluate(tst_dataset)
+    m.fit(trn_dataset, epochs=num_epochs, callbacks=callbacks, verbose=2)
+    results = m.evaluate(tst_dataset, callbacks=callbacks)
     loss, metrics_values = results[0], results[1:]
 
     metrics = {metric.name: metrics_values[i] for i, metric in enumerate(m.metrics)}
