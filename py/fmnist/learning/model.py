@@ -25,9 +25,9 @@ class FCNN(object):
         }
 
     @classmethod
-    def create_model(cls, learning_rate: float, dropout_rate: float, num_classes: int,
-                     activation: Optional[str], num_layers: int, layer_size: int, label_index: Dict[str, int],
-                     label_weights: Dict[str, float]) -> tf.keras.models.Model:
+    def create_model(cls, dropout_rate: float, num_classes: int, activation: Optional[str],
+                     num_layers: int, layer_size: int, optimizer: tf.keras.optimizers.Optimizer,
+                     label_index: Dict[str, int], label_weights: Dict[str, float]) -> tf.keras.models.Model:
         """
         Creates a model function
         :return: model_fn of type (features_dict, labels, mode) -> :class:`tf.estimator.EstimatorSpec`
@@ -46,7 +46,8 @@ class FCNN(object):
         tf.summary.histogram('layer-softmax', final_layer.variables)
 
         model = tf.keras.Sequential(layers)
-        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+        model.compile(optimizer=optimizer,
                       loss='sparse_categorical_crossentropy',
                       metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
         return model
+

@@ -15,12 +15,13 @@ from fmnist.hps import core
 APP_NAME = 'fmnist-hps'
 
 PARAM_SPACE = {
-    'batch_size': hp.choice('batch_size', options=[2 ** x for x in range(3, 7 + 1)]),
+    'batch_size': hp.choice('batch_size', options=[2 ** x for x in range(4, 7 + 1)]),
     'learning_rate': hp.loguniform('learning_rate', low=np.log(0.0001), high=np.log(1)),
     'dropout_rate': hp.quniform('dropout_rate', low=0.05, high=0.5, q=0.05),
     'activation': hp.choice('activation', options=['relu', 'selu', 'tanh']),
     'num_layers': scope.int(hp.quniform('num_layers', low=1, high=16, q=2)),
-    'layer_size': hp.choice('layer_size', options=[2 ** x for x in range(6, 10 + 1)])
+    'layer_size': hp.choice('layer_size', options=[512, 768, 1024, 1536]),
+    'optimizer': hp.choice('optimizer', options=['adam', 'adamax', 'nadam', 'rms-prop']),
 }
 
 

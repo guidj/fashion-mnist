@@ -22,7 +22,7 @@ function run(){
         --job-dir "${TMP_DIR}/job_dir" \
         --model-dir "${TMP_DIR}/model_dir" \
         --num-threads 4 \
-        --num-epochs 25 \
+        --num-epochs 50 \
         --max-evaluations 200 "$@"
     cp -r "${TMP_DIR}" "${HOME}/"
 }

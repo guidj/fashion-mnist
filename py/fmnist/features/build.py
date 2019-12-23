@@ -41,7 +41,6 @@ def load_data_fn(train_path: str, test_path: str) -> Tuple[DataTuple, DataTuple,
 
     # X forms the training images, and y forms the training labels
     X = np.array(data_train.iloc[:, 1:])
-    # TODO: save without OHE -- doesn't take much space but isn't useful either
     y = keras.utils.to_categorical(np.array(data_train.iloc[:, 0]))
 
     # X_test forms the test images, and y_test forms the test labels
