@@ -1,15 +1,15 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 import tensorflow as tf
 
 from fmnist import xmath, constants
-from fmnist.learning import metrics
 
 
 class FCNN(object):
     """
     Fully Connected Neural Network
     """
+
     @classmethod
     def feature_columns_spec(cls) -> List[Any]:
         embedding_size = xmath.SeqOp.multiply(constants.FMNIST_EMBEDDING_DIMENSIONS)
@@ -25,9 +25,9 @@ class FCNN(object):
         }
 
     @classmethod
-    def create_model(cls, job_dir: str, learning_rate: float, dropout_rate: float, num_classes: int, activation: bool,
-                     num_layers: int, label_index: Dict[str, int],
-                     label_weights: Dict[str, float]) -> tf.keras.models.Model:
+    def create_model(cls, dropout_rate: float, num_classes: int, activation: Optional[str],
+                     num_layers: int, layer_size: int, optimizer: tf.keras.optimizers.Optimizer,
+                     label_index: Dict[str, int], label_weights: Dict[str, float]) -> tf.keras.models.Model:
         """
         Creates a model function
         :return: model_fn of type (features_dict, labels, mode) -> :class:`tf.estimator.EstimatorSpec`
@@ -37,7 +37,7 @@ class FCNN(object):
         layers = [feature_layer]
 
         for _ in range(num_layers):
-            layers.append(tf.keras.layers.Dense(1024, activation='relu' if activation else None))
+            layers.append(tf.keras.layers.Dense(layer_size, activation=activation))
             layers.append(tf.keras.layers.Dropout(dropout_rate))
 
         final_layer = tf.keras.layers.Dense(num_classes, activation='softmax', name='softmax')
@@ -46,7 +46,8 @@ class FCNN(object):
         tf.summary.histogram('layer-softmax', final_layer.variables)
 
         model = tf.keras.Sequential(layers)
-        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+        model.compile(optimizer=optimizer,
                       loss='sparse_categorical_crossentropy',
                       metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
         return model
+

@@ -2,6 +2,7 @@ import multiprocessing as mp
 import os
 import os.path
 import argparse
+from typing import Tuple, Callable
 
 import cv2
 import keras
@@ -20,25 +21,26 @@ MP_THREADS = mp.cpu_count()
 IMAGE_SIZE = 128
 NUM_CLASSES = 10
 
+DataTuple = Tuple[np.ndarray, np.ndarray]
 
-def reshape(img_array):
+
+def reshape(img_array: np.ndarray) -> np.ndarray:
     return img_array.reshape(-1, 28)
 
 
-def create_path_fn(base):
-    def fn(path, filename):
+def create_path_fn(base: str) -> Callable[[str, str], str]:
+    def fn(path: str, filename: str) -> str:
         return os.path.join(base, path, filename)
 
     return fn
 
 
-def load_data_fn(train_path, test_path):
+def load_data_fn(train_path: str, test_path: str) -> Tuple[DataTuple, DataTuple, DataTuple]:
     data_train = pd.read_csv(train_path)
     data_test = pd.read_csv(test_path)
 
     # X forms the training images, and y forms the training labels
     X = np.array(data_train.iloc[:, 1:])
-    # TODO: save without OHE -- doesn't take much space but isn't useful either
     y = keras.utils.to_categorical(np.array(data_train.iloc[:, 0]))
 
     # X_test forms the test images, and y_test forms the test labels
@@ -77,28 +79,31 @@ def load_data_fn(train_path, test_path):
     return (fX_train, y_train), (fX_val, y_val), (fX_test, y_test)
 
 
-def load_model_fn(image_size, num_classes):
+def load_model_fn(image_size: int, num_classes: int):
     from keras.applications import VGG19
     # Create the base model of VGG19
     return VGG19(weights='imagenet', include_top=False, input_shape=(image_size, image_size, 3), classes=num_classes)
 
 
-def embeddings_fn(model: keras.Model, *inputs):
+def embeddings_fn(model: keras.Model, batch_size: int, *inputs):
     # fn_learned_layer = K.function([model_vgg19.layers[0].input], [model_vgg19.layers[1].output])
 
     predictions = []
     for input_ in inputs:
         input_preproc = vgg19.preprocess_input(input_)
-        embeddings = model.predict(np.array(input_preproc), batch_size=64, verbose=1)
+        embeddings = model.predict(np.array(input_preproc), batch_size=batch_size, verbose=1)
         predictions.append(embeddings)
 
     return predictions
 
 
-def export_fn(path, array):
+def export_fn(path: str, array: np.ndarray) -> None:
     import tempfile
     import uuid
     temporary_path = os.path.join(tempfile.gettempdir(), '{}.npz'.format(uuid.uuid4()))
+
+    if not tf.io.gfile.exists(os.path.dirname(path)):
+        tf.io.gfile.makedirs(os.path.dirname(path))
     with open(temporary_path, 'wb') as fp:
         np.savez(fp, array)
 
@@ -109,6 +114,7 @@ def export_fn(path, array):
 def parse_args():
     arg_parser = argparse.ArgumentParser('fminst-vgg19-embedding', description='Get VGG19 embeddings for FMNIST')
     arg_parser.add_argument('--train-data', required=True)
+    arg_parser.add_argument('--batch-size', required=False, type=int, default=32)
     arg_parser.add_argument('--job-dir', required=False, default=None)
 
     args = arg_parser.parse_args()
@@ -134,7 +140,7 @@ def main():
     logger.info('Loading VGG19')
     model_vgg19 = load_model_fn(image_size=IMAGE_SIZE, num_classes=NUM_CLASSES)
 
-    emb_train, emb_val, emd_test = embeddings_fn(model_vgg19, fX_train, fX_val, fX_test)
+    emb_train, emb_val, emd_test = embeddings_fn(model_vgg19, args.batch_size, fX_train, fX_val, fX_test)
 
     # Saving the features so that they can be used for future
     for prefix, embedding, y in zip(['train', 'val', 'test'], [emb_train, emb_val, emd_test], [y_train, y_val, y_test]):

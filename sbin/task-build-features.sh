@@ -12,8 +12,8 @@ function run(){
 
     bash ${SBIN}/package.sh
 
-    export now=`date +%s`
-    export job_id="fme_${now}"
+    now=`date +%s`
+    job_id="fme_${now}-XXXXXXX"
     gcloud ai-platform jobs submit training ${job_id} \
         --module-name=fmnist.features.build \
         --job-dir="gs://${GCS_DATA}/ai-platform/jobs/${job_id}" \

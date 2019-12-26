@@ -1,14 +1,13 @@
-import os.path
 import logging
+import os.path
+import time
 from typing import Optional
 
 import numpy as np
 import tensorflow as tf
-from tensorflow_core.python.keras.models import Model
+from tensorflow_core.python.keras import models
 
-from fmnist import xmath, constants
-from fmnist.learning import model
-from fmnist.learning import metrics
+from fmnist import xmath, constants, xpath
 
 logger = logging.getLogger('tensorflow')
 
@@ -51,24 +50,14 @@ def resolve_data_path(basedir: str, phase: str):
     return resolve('features'), resolve('label')
 
 
-def create_serving_input_receiver_fn():
-    return tf.estimator.export.build_parsing_serving_input_receiver_fn(model.feature_spec())
-
-
-def export_model(model: Model, export_dir: str) -> None:
-    # tf.saved_model.save(model, export_dir)
-    import time
+def export_model(model: models.Model, export_dir: str) -> None:
     path = os.path.join(export_dir, str(int(time.time())))
-    if tf.io.gfile.exists(path):
-        tf.io.gfile.rmtree(path)
-    elif not tf.io.gfile.exists(os.path.dirname(path)):
-        tf.io.gfile.makedirs(os.path.dirname(path))
-
+    xpath.prepare_path(path, clean=True)
     logger.info('Saving to path %s', path)
     model.save(path)
 
 
-def load_model(path: str) -> Optional[Model]:
+def load_model(path: str) -> Optional[models.Model]:
     if tf.io.gfile.exists(os.path.join(path, 'saved_model.pb')):
         return tf.keras.models.load_model(path)
     else:

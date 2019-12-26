@@ -14,15 +14,22 @@ function run(){
 
     export PYTHONPATH=$PYTHONPATH:${BASE}/py/dist/fmnist-0.1.0-py3.7.egg
 
-    export now=`date +%s`
-    export job_id="fme_${now}"
+    now=`date +%s`
+    job_id="fme_${now}-XXXXXXX"
     TMP_DIR=$(mktemp -d -t $job_id)
     python -m fmnist.learning.train \
         --train-data "${HOME}/code/fashion-mnist/data" \
         --job-dir "${TMP_DIR}/job_dir" \
         --model-dir "${TMP_DIR}/model_dir" \
+        --num-threads 4 \
         --num-layers 4 \
-        --num-epochs 5
+        --layer-size 512 \
+        --batch-size 64 \
+        --num-epochs 100 \
+        --activation "tanh" \
+        --dropout-rate 0.05 \
+        --optimizer "nadam" \
+        --lr 0.0006 "$@"
 }
 
 run "$@"
