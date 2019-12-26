@@ -2,6 +2,7 @@ import argparse
 import logging
 import os.path
 
+import tensorflow as tf
 import numpy as np
 
 from fmnist import constants
@@ -44,10 +45,10 @@ def main():
     args = parse_args()
 
     base_data_dir = os.path.join(args.train_data, constants.DataPaths.INTERIM)
-    (val_x_path, val_y_path) = task.resolve_data_path(base_data_dir, 'val')
+    tst_path = task.resolve_data_path(base_data_dir, 'test')
 
     logger.info('Loading data from %s', base_data_dir)
-    val_dataset = task.build_features(val_x_path, val_y_path,
+    tst_dataset = task.build_features(tst_path,
                                       num_threads=args.num_threads,
                                       buffer_size=args.buffer_size,
                                       batch_size=args.batch_size,
@@ -58,7 +59,7 @@ def main():
 
     labels = []
     predictions = []
-    for features, label in val_dataset:
+    for features, label in tst_dataset:
         prediction = model.predict(features)
         labels.extend(label)
         predictions.extend(np.argmax(prediction, axis=1))

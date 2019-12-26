@@ -1,31 +1,26 @@
+import argparse
 import multiprocessing as mp
 import os
 import os.path
-import argparse
-from typing import Tuple, Callable
+from typing import Tuple, Callable, List, Iterator, Iterable
 
-import cv2
-import keras
-import keras.utils
 import numpy as np
 import pandas as pd
-from keras.applications import vgg19
-from sklearn import model_selection
 import tensorflow as tf
+from sklearn import model_selection
 
-from fmnist import logger
+from fmnist import logger, constants, xmath, xpath
 from fmnist.constants import DataPaths
 
 MP_THREADS = mp.cpu_count()
 
-IMAGE_SIZE = 128
-NUM_CLASSES = 10
-
 DataTuple = Tuple[np.ndarray, np.ndarray]
 
 
-def reshape(img_array: np.ndarray) -> np.ndarray:
-    return img_array.reshape(-1, 28)
+def data_frame_split(df: pd.DataFrame, left_fraction: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    indexes = [v for v in range(len(df))]
+    train_idx, test_idx = model_selection.train_test_split(indexes, train_size=left_fraction)
+    return df.iloc[train_idx, :], df.iloc[test_idx, :]
 
 
 def create_path_fn(base: str) -> Callable[[str, str], str]:
@@ -35,80 +30,105 @@ def create_path_fn(base: str) -> Callable[[str, str], str]:
     return fn
 
 
-def load_data_fn(train_path: str, test_path: str) -> Tuple[DataTuple, DataTuple, DataTuple]:
-    data_train = pd.read_csv(train_path)
-    data_test = pd.read_csv(test_path)
+def create_data_generator(x: np.ndarray,
+                          y: np.ndarray,
+                          processors: List[Callable[[DataTuple], DataTuple]],
+                          post_processors: List[Callable[[DataTuple], DataTuple]]) -> Callable[[], Iterable[DataTuple]]:
+    assert len(x.shape) == 2, 'x should be a 2-D array'
+    n = x.shape[0]
 
-    # X forms the training images, and y forms the training labels
-    X = np.array(data_train.iloc[:, 1:])
-    y = keras.utils.to_categorical(np.array(data_train.iloc[:, 0]))
+    def post_process(dt: DataTuple, transformers: List[Callable[[DataTuple], DataTuple]]) -> DataTuple:
+        if not transformers:
+            return dt
+        else:
+            transformer, transformers = transformers[0], transformers[1:]
+            return post_process(transformer(dt), transformers)
 
-    # X_test forms the test images, and y_test forms the test labels
-    X_test = np.array(data_test.iloc[:, 1:])
-    y_test = keras.utils.to_categorical(np.array(data_test.iloc[:, 0]))
+    def fn():
+        for i in range(n):
+            for transformer in processors:
+                example_x, example_y = transformer((x[i], y[i]))
+                processed_x, processed_y = post_process((example_x, example_y), post_processors)
+                yield processed_x, processed_y
 
-    # Convert the training and test images into 3 channels
-    logger.info('Convert images to 3 channels')
-    X = np.dstack([X] * 3)
-    X_test = np.dstack([X_test] * 3)
-    logger.info('%s, %s', X.shape, X_test.shape)
-
-    logger.info('Reshape images')
-    X = X.reshape(-1, 28, 28, 3)
-    X_test = X_test.reshape(-1, 28, 28, 3)
-    logger.info('%s, %s', X.shape, X_test.shape)
-
-    # We'll resize the images using OpenCV-2. It provides a faithful upsizing of the images.
-    logger.info('Resize images')
-    X = X.astype('uint8')
-    X_test = X_test.astype('uint8')
-    X = np.asarray([cv2.resize(im, (IMAGE_SIZE, IMAGE_SIZE)) for im in X])
-    X_test = np.asarray([cv2.resize(im, (IMAGE_SIZE, IMAGE_SIZE)) for im in X_test])
-    logger.info('%s, %s', X.shape, X_test.shape)
-
-    # Normalise the data and change data type
-    fX = X.astype('float32')
-    fX /= 255
-
-    fX_test = X_test.astype('float32')
-    fX_test /= 255
-
-    fX_train, fX_val, y_train, y_val = model_selection.train_test_split(fX, y, test_size=0.2, shuffle=True,
-                                                                        random_state=13)
-
-    return (fX_train, y_train), (fX_val, y_val), (fX_test, y_test)
+    return fn
 
 
-def load_model_fn(image_size: int, num_classes: int):
-    from keras.applications import VGG19
-    # Create the base model of VGG19
-    return VGG19(weights='imagenet', include_top=False, input_shape=(image_size, image_size, 3), classes=num_classes)
+def create_dataset(df: pd.DataFrame) -> tf.data.Dataset:
+    x = np.array(df.iloc[:, 1:])
+    y = np.array(df.iloc[:, 0])
+
+    def expand(dt: DataTuple) -> DataTuple:
+        x, y = dt
+        return np.array([x]), y
+
+    def normalize(dt: DataTuple) -> DataTuple:
+        x, y = dt
+        return x.astype('float32') / 255., y
+
+    post_processors = [expand]
+    generator = create_data_generator(x, y, processors=[normalize], post_processors=post_processors)
+
+    ds = tf.data.Dataset.from_generator(generator,
+                                        output_types=(tf.float32, tf.int32),
+                                        output_shapes=([1, xmath.SeqOp.multiply(constants.FMNIST_DIMENSIONS)], []))
+    return ds
 
 
-def embeddings_fn(model: keras.Model, batch_size: int, *inputs):
-    # fn_learned_layer = K.function([model_vgg19.layers[0].input], [model_vgg19.layers[1].output])
-
-    predictions = []
-    for input_ in inputs:
-        input_preproc = vgg19.preprocess_input(input_)
-        embeddings = model.predict(np.array(input_preproc), batch_size=batch_size, verbose=1)
-        predictions.append(embeddings)
-
-    return predictions
+def create_generator(dataset: tf.data.Dataset, batch_size: int) -> Iterator[DataTuple]:
+    for x, y in dataset.batch(batch_size):
+        yield x, y
 
 
-def export_fn(path: str, array: np.ndarray) -> None:
-    import tempfile
-    import uuid
-    temporary_path = os.path.join(tempfile.gettempdir(), '{}.npz'.format(uuid.uuid4()))
+def create_partitioning_fn(group_size: int,
+                           agg_fn: Callable[[List[DataTuple]], DataTuple],
+                           consumer_fn: Callable[[DataTuple, int], None]) -> Callable[[Iterator[DataTuple]], None]:
+    """
+    :param group_size: group size for values accumulated from the iterator
+    :param agg_fn: function to aggregate values in a group
+    :param consumer_fn: function to consume result of group aggregation
+    """
+    assert group_size > 0, 'size should be positive'
 
-    if not tf.io.gfile.exists(os.path.dirname(path)):
-        tf.io.gfile.makedirs(os.path.dirname(path))
-    with open(temporary_path, 'wb') as fp:
-        np.savez(fp, array)
+    def fn(data: Iterator[DataTuple]):
+        group = []
+        partition = 0
+        for batch in data:
+            group.append(batch)
+            if len(group) >= group_size:
+                # flush
+                consumer_fn(agg_fn(group), partition)
+                group = []
+                partition += 1
 
-    logger.info('Copying %s to %s', temporary_path, path)
-    tf.io.gfile.copy(src=temporary_path, dst=path, overwrite=True)
+        if group:
+            # flush
+            consumer_fn(agg_fn(group), partition)
+
+    return fn
+
+
+def create_export_fn(path: str, extension: str) -> Callable[[DataTuple, int], None]:
+    def fn(arrays: DataTuple, partition: int) -> None:
+        import tempfile
+        import uuid
+        temporary_path = os.path.join(tempfile.gettempdir(), '{}.{}'.format(uuid.uuid4(), extension))
+
+        file_path = os.path.join(path, 'part-{:03}.{}'.format(partition, extension))
+        xpath.prepare_path(file_path)
+        with open(temporary_path, 'wb') as fp:
+            np.savez(fp, *arrays)
+
+        logger.info('Copying %s to %s', temporary_path, file_path)
+        tf.io.gfile.copy(src=temporary_path, dst=file_path, overwrite=True)
+    return fn
+
+
+def agg_fn(dts: List[DataTuple]) -> DataTuple:
+    xs, ys = list(zip(*dts))
+    xs = np.reshape(np.concatenate(xs, axis=0), newshape=(-1, xmath.SeqOp.multiply(constants.FMNIST_DIMENSIONS)))
+    ys = np.concatenate(ys)
+    return xs, ys
 
 
 def parse_args():
@@ -130,22 +150,18 @@ def main():
     args = parse_args()
     fpath = create_path_fn(args.train_data)
 
-    (fX_train, y_train), (fX_val, y_val), (fX_test, y_test) = \
-        load_data_fn(train_path=fpath(DataPaths.FMNIST, 'fashion-mnist_train.csv'),
-                     test_path=fpath(DataPaths.FMNIST, 'fashion-mnist_test.csv'))
+    df_prime = pd.read_csv(fpath(DataPaths.FMNIST, 'fashion-mnist_train.csv'))
+    df_test = pd.read_csv(fpath(DataPaths.FMNIST, 'fashion-mnist_test.csv'))
+    df_train, df_val = data_frame_split(df_prime, left_fraction=0.80)
 
-    # Check the data size whether it is as per tensorflow and VGG19 requirement
-    logger.info('X: (%s), X_val: (%s), y: (%s), y_val: (%s)', fX_train.shape, fX_val.shape, y_train.shape, y_val.shape)
+    for df, split in zip((df_train, df_val, df_test), ('train', 'val', 'test')):
+        logger.info('Running partitioning pipeline for %s', split)
+        ds = create_dataset(df)
+        data_iter = create_generator(ds, batch_size=args.batch_size)
 
-    logger.info('Loading VGG19')
-    model_vgg19 = load_model_fn(image_size=IMAGE_SIZE, num_classes=NUM_CLASSES)
-
-    emb_train, emb_val, emd_test = embeddings_fn(model_vgg19, args.batch_size, fX_train, fX_val, fX_test)
-
-    # Saving the features so that they can be used for future
-    for prefix, embedding, y in zip(['train', 'val', 'test'], [emb_train, emb_val, emd_test], [y_train, y_val, y_test]):
-        export_fn(fpath(DataPaths.INTERIM, '{}_features.npz'.format(prefix)), embedding)
-        export_fn(fpath(DataPaths.INTERIM, '{}_label.npz'.format(prefix)), y)
+        export_fn = create_export_fn(fpath(DataPaths.INTERIM, split), 'npz')
+        partition_export_fn = create_partitioning_fn(group_size=100, agg_fn=agg_fn, consumer_fn=export_fn)
+        partition_export_fn(data_iter)
 
 
 if __name__ == '__main__':

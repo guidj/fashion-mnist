@@ -1,40 +1,39 @@
+import glob
 import logging
 import os.path
 import time
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 import tensorflow as tf
 from tensorflow_core.python.keras import models
 
 from fmnist import xmath, constants, xpath
+from fmnist.learning import architecture
 
 logger = logging.getLogger('tensorflow')
 
 
-def build_features(x_path: str, y_path: str, batch_size: int, num_threads: int, buffer_size: int,
+def build_features(paths: List[str], batch_size: int, num_threads: int, buffer_size: int,
                    num_epochs: int = None, shuffle: bool = False):
     """
     Note: data coming from max-pool layer is already normalized across features
     """
 
-    def load(path):
-        with tf.io.gfile.GFile(path, 'rb') as fp:
-            with np.load(fp) as data:
-                return data[data.files[0]]
+    def load():
+        for path in paths:
+            with tf.io.gfile.GFile(path, 'rb') as fp:
+                with np.load(fp) as data:
+                    xs, ys = data[data.files[0]], data[data.files[1]]
+                    for i in range(xs.shape[0]):
+                        yield xs[i], ys[i]
 
     def process_fn(features, label):
-        return {'image_embedding': features}, label
+        return {'image': features}, label
 
-    x = load(x_path)
-    y = load(y_path)
-    x = np.reshape(x, (x.shape[0], xmath.SeqOp.multiply(constants.FMNIST_EMBEDDING_DIMENSIONS)))
-    # normalize values values -- hack around not having the actual max;
-    # values should fall between [0...U]
-    x = x / 80.
-    y = np.argmax(y, axis=1)
-
-    dataset = tf.data.Dataset.from_tensor_slices((x, y))
+    dataset = tf.data.Dataset.from_generator(load,
+                                             output_types=(tf.float32, tf.int32),
+                                             output_shapes=([xmath.SeqOp.multiply(constants.FMNIST_DIMENSIONS)], []))
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.prefetch(buffer_size)
     dataset = dataset.map(process_fn, num_parallel_calls=num_threads)
@@ -43,18 +42,15 @@ def build_features(x_path: str, y_path: str, batch_size: int, num_threads: int, 
     return dataset
 
 
-def resolve_data_path(basedir: str, phase: str):
-    def resolve(asset):
-        return os.path.join(basedir, '{}_{}.npz'.format(phase, asset))
-
-    return resolve('features'), resolve('label')
+def resolve_data_path(basedir: str, phase: str) -> List[str]:
+    return glob.glob(os.path.join(basedir, phase, 'part-*'))
 
 
-def export_model(model: models.Model, export_dir: str) -> None:
+def export_model(model: architecture.LTModel, export_dir: str) -> None:
     path = os.path.join(export_dir, str(int(time.time())))
     xpath.prepare_path(path, clean=True)
     logger.info('Saving to path %s', path)
-    model.save(path)
+    model.export(path)
 
 
 def load_model(path: str) -> Optional[models.Model]:
