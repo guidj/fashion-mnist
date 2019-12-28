@@ -1,39 +1,12 @@
-import abc
-from typing import Dict, Any, List, Optional
+from typing import Optional, Dict, List, Any
 
 import tensorflow as tf
 
 from fmnist import xmath, constants
+from fmnist.learning.arch import base
 
 
-class LTModel(abc.ABC):
-    @abc.abstractmethod
-    def preproc(self, ds: tf.data.Dataset) -> tf.data.Dataset:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def feature_columns_spec(self) -> List[Any]:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def fit(self, ds: tf.data.Dataset, epochs: int, callbacks: List[tf.keras.callbacks.Callback],
-            verbose: int) -> tf.keras.callbacks.History:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def evaluate(self, ds: tf.data.Dataset, callbacks: List[tf.keras.callbacks.Callback], verbose: int) -> List[float]:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def export(self, path: str):
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def metrics(self) -> List[tf.metrics.Metric]:
-        raise NotImplementedError
-
-
-class FCNN(LTModel):
+class FCNN(base.LTModel):
     def __init__(self, dropout_rate: float, num_classes: int, activation: Optional[str],
                  num_layers: int, layer_size: int, optimizer: tf.keras.optimizers.Optimizer,
                  label_index: Dict[str, int], label_weights: Dict[str, float],
@@ -68,7 +41,7 @@ class FCNN(LTModel):
         return ds
 
     def feature_columns_spec(self) -> List[Any]:
-        image_size = xmath.SeqOp.multiply(constants.FMNIST_UP_DIMENSIONS)
+        image_size = xmath.SeqOp.multiply(constants.FMNIST_L_DIMENSIONS)
         return [tf.feature_column.numeric_column('image',
                                                  shape=(image_size,), )]
 

@@ -9,7 +9,7 @@ import tensorflow as tf
 from tensorflow_core.python.keras import models
 
 from fmnist import xmath, constants, xpath
-from fmnist.learning import architecture
+from fmnist.learning.arch import base
 
 logger = logging.getLogger('tensorflow')
 
@@ -33,7 +33,7 @@ def build_features(paths: List[str], batch_size: int, num_threads: int, buffer_s
 
     dataset = tf.data.Dataset.from_generator(load,
                                              output_types=(tf.float32, tf.int32),
-                                             output_shapes=([xmath.SeqOp.multiply(constants.FMNIST_UP_DIMENSIONS)], []))
+                                             output_shapes=([xmath.SeqOp.multiply(constants.FMNIST_L_DIMENSIONS)], []))
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.prefetch(buffer_size)
     dataset = dataset.map(process_fn, num_parallel_calls=num_threads)
@@ -46,7 +46,7 @@ def resolve_data_path(basedir: str, phase: str) -> List[str]:
     return glob.glob(os.path.join(basedir, phase, 'part-*'))
 
 
-def export_model(model: architecture.LTModel, export_dir: str) -> None:
+def export_model(model: base.LTModel, export_dir: str) -> None:
     path = os.path.join(export_dir, str(int(time.time())))
     xpath.prepare_path(path, clean=True)
     logger.info('Saving to path %s', path)

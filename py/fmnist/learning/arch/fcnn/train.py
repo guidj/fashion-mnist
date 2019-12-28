@@ -8,13 +8,10 @@ import tensorflow as tf
 
 from fmnist import constants
 from fmnist.data import metadata
-from fmnist.learning import architecture
 from fmnist.learning import task
+from fmnist.learning.arch.fcnn import network
 
 logger = logging.getLogger('tensorflow')
-
-TF_LOG_PER_BATCH = 1
-TF_LOG_PER_EPOCH = 2
 
 
 def parse_args() -> argparse.Namespace:
@@ -87,15 +84,15 @@ def train(base_data_dir: str, num_threads: int, buffer_size: int, batch_size: in
 
     optimizer = create_optimizer(optimizer_name, learning_rate=learning_rate)
 
-    m = architecture.FCNN(dropout_rate=dropout_rate,
-                          num_classes=constants.FMNIST_NUM_CLASSES,
-                          activation=activation,
-                          num_layers=num_layers,
-                          optimizer=optimizer,
-                          layer_size=layer_size,
-                          label_index=metadata.LABEL_INDEX,
-                          label_weights=metadata.LABEL_WEIGHTS,
-                          num_threads=num_threads)
+    m = network.FCNN(dropout_rate=dropout_rate,
+                     num_classes=constants.FMNIST_NUM_CLASSES,
+                     activation=activation,
+                     num_layers=num_layers,
+                     optimizer=optimizer,
+                     layer_size=layer_size,
+                     label_index=metadata.LABEL_INDEX,
+                     label_weights=metadata.LABEL_WEIGHTS,
+                     num_threads=num_threads)
 
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=job_dir, histogram_freq=1, update_freq='epoch')
     callbacks = [tensorboard_callback]
@@ -103,8 +100,8 @@ def train(base_data_dir: str, num_threads: int, buffer_size: int, batch_size: in
     logger.info('Starting training')
 
     # verbose=2 logs per epoch
-    m.fit(trn_dataset, epochs=num_epochs, callbacks=callbacks, verbose=TF_LOG_PER_EPOCH)
-    results = m.evaluate(val_dataset, callbacks=callbacks, verbose=TF_LOG_PER_BATCH)
+    m.fit(trn_dataset, epochs=num_epochs, callbacks=callbacks, verbose=constants.TF_LOG_PER_EPOCH)
+    results = m.evaluate(val_dataset, callbacks=callbacks, verbose=constants.TF_LOG_PER_BATCH)
     loss, metrics_values = results[0], results[1:]
 
     metrics = {metric.name: metrics_values[i] for i, metric in enumerate(m.metrics)}

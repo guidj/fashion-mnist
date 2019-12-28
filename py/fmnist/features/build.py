@@ -66,14 +66,14 @@ def create_dataset(df: pd.DataFrame) -> tf.data.Dataset:
 
     transformer_fns = [tfs.normalize_image_values]
     post_processor_fns = [tfs.create_resize_image_fn(size=constants.FMNIST_DIMENSIONS,
-                                                     new_size=constants.FMNIST_UP_DIMENSIONS,
+                                                     new_size=constants.FMNIST_L_DIMENSIONS,
                                                      flatten=True),
                           tfs.expand]
     generator = create_data_generator(x, y, transformer_fns=transformer_fns, post_processor_fns=post_processor_fns)
 
     ds = tf.data.Dataset.from_generator(generator,
                                         output_types=(tf.float32, tf.int32),
-                                        output_shapes=([1, xmath.SeqOp.multiply(constants.FMNIST_UP_DIMENSIONS)], []))
+                                        output_shapes=([1, xmath.SeqOp.multiply(constants.FMNIST_L_DIMENSIONS)], []))
     return ds
 
 
@@ -130,7 +130,7 @@ def create_export_fn(path: str, extension: str) -> Callable[[xtype.DataTuple, in
 
 def agg_fn(dts: List[xtype.DataTuple]) -> xtype.DataTuple:
     xs, ys = list(zip(*dts))
-    xs = np.reshape(np.concatenate(xs, axis=0), newshape=(-1, xmath.SeqOp.multiply(constants.FMNIST_UP_DIMENSIONS)))
+    xs = np.reshape(np.concatenate(xs, axis=0), newshape=(-1, xmath.SeqOp.multiply(constants.FMNIST_L_DIMENSIONS)))
     ys = np.concatenate(ys)
     return xs, ys
 

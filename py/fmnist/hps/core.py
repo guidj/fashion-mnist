@@ -12,7 +12,7 @@ import pandas as pd
 import tensorflow as tf
 
 from fmnist import logger, xpath
-from fmnist.learning import train
+from fmnist.learning.arch.fcnn import train
 
 EVALUATED_PARAMS_FILE = 'best-params.json'
 TRIALS_PICKLE_FILE = 'trials.pickle'

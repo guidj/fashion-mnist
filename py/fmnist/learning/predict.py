@@ -34,7 +34,7 @@ def parse_args():
 
 def generate_classification_report(y_true, y_pred, target_names):
     from sklearn.metrics import classification_report
-    print(classification_report(y_true, y_pred=y_pred, target_names=target_names))
+    logger.info(classification_report(y_true, y_pred=y_pred, target_names=target_names))
 
 
 def main():
