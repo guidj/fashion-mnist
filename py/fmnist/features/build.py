@@ -9,12 +9,11 @@ import pandas as pd
 import tensorflow as tf
 from sklearn import model_selection
 
-from fmnist import logger, constants, xmath, xpath
+from fmnist import logger, constants, xmath, xpath, xtype
 from fmnist.constants import DataPaths
+from fmnist.features import transformers as tfs
 
 MP_THREADS = mp.cpu_count()
-
-DataTuple = Tuple[np.ndarray, np.ndarray]
 
 
 def data_frame_split(df: pd.DataFrame, left_fraction: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -32,23 +31,30 @@ def create_path_fn(base: str) -> Callable[[str, str], str]:
 
 def create_data_generator(x: np.ndarray,
                           y: np.ndarray,
-                          processors: List[Callable[[DataTuple], DataTuple]],
-                          post_processors: List[Callable[[DataTuple], DataTuple]]) -> Callable[[], Iterable[DataTuple]]:
+                          transformer_fns: List[Callable[[xtype.DataTuple], xtype.DataTuple]],
+                          post_processor_fns: List[Callable[[xtype.DataTuple], xtype.DataTuple]]
+                          ) -> Callable[[], Iterable[xtype.DataTuple]]:
+    """
+    Processes each example in x and y.
+    For each instance, the each transformer_fn is called. For each output of the transformer_fn,
+    all post_processor_fns are applied in sequence to get the final result.
+    """
     assert len(x.shape) == 2, 'x should be a 2-D array'
     n = x.shape[0]
 
-    def post_process(dt: DataTuple, transformers: List[Callable[[DataTuple], DataTuple]]) -> DataTuple:
-        if not transformers:
+    def post_process(dt: xtype.DataTuple,
+                     transformer_fns: List[Callable[[xtype.DataTuple], xtype.DataTuple]]) -> xtype.DataTuple:
+        if not transformer_fns:
             return dt
         else:
-            transformer, transformers = transformers[0], transformers[1:]
-            return post_process(transformer(dt), transformers)
+            transformer_fn, transformer_fns = transformer_fns[0], transformer_fns[1:]
+            return post_process(transformer_fn(dt), transformer_fns)
 
     def fn():
         for i in range(n):
-            for transformer in processors:
-                example_x, example_y = transformer((x[i], y[i]))
-                processed_x, processed_y = post_process((example_x, example_y), post_processors)
+            for transformer_fn in transformer_fns:
+                example_x, example_y = transformer_fn((x[i], y[i]))
+                processed_x, processed_y = post_process((example_x, example_y), post_processor_fns)
                 yield processed_x, processed_y
 
     return fn
@@ -58,31 +64,28 @@ def create_dataset(df: pd.DataFrame) -> tf.data.Dataset:
     x = np.array(df.iloc[:, 1:])
     y = np.array(df.iloc[:, 0])
 
-    def expand(dt: DataTuple) -> DataTuple:
-        x, y = dt
-        return np.array([x]), y
-
-    def normalize(dt: DataTuple) -> DataTuple:
-        x, y = dt
-        return x.astype('float32') / 255., y
-
-    post_processors = [expand]
-    generator = create_data_generator(x, y, processors=[normalize], post_processors=post_processors)
+    transformer_fns = [tfs.normalize_image_values]
+    post_processor_fns = [tfs.create_resize_image_fn(size=constants.FMNIST_DIMENSIONS,
+                                                     new_size=constants.FMNIST_UP_DIMENSIONS,
+                                                     flatten=True),
+                          tfs.expand]
+    generator = create_data_generator(x, y, transformer_fns=transformer_fns, post_processor_fns=post_processor_fns)
 
     ds = tf.data.Dataset.from_generator(generator,
                                         output_types=(tf.float32, tf.int32),
-                                        output_shapes=([1, xmath.SeqOp.multiply(constants.FMNIST_DIMENSIONS)], []))
+                                        output_shapes=([1, xmath.SeqOp.multiply(constants.FMNIST_UP_DIMENSIONS)], []))
     return ds
 
 
-def create_generator(dataset: tf.data.Dataset, batch_size: int) -> Iterator[DataTuple]:
+def create_generator(dataset: tf.data.Dataset, batch_size: int) -> Iterator[xtype.DataTuple]:
     for x, y in dataset.batch(batch_size):
         yield x, y
 
 
 def create_partitioning_fn(group_size: int,
-                           agg_fn: Callable[[List[DataTuple]], DataTuple],
-                           consumer_fn: Callable[[DataTuple, int], None]) -> Callable[[Iterator[DataTuple]], None]:
+                           agg_fn: Callable[[List[xtype.DataTuple]], xtype.DataTuple],
+                           consumer_fn: Callable[[xtype.DataTuple, int], None]
+                           ) -> Callable[[Iterator[xtype.DataTuple]], None]:
     """
     :param group_size: group size for values accumulated from the iterator
     :param agg_fn: function to aggregate values in a group
@@ -90,7 +93,7 @@ def create_partitioning_fn(group_size: int,
     """
     assert group_size > 0, 'size should be positive'
 
-    def fn(data: Iterator[DataTuple]):
+    def fn(data: Iterator[xtype.DataTuple]):
         group = []
         partition = 0
         for batch in data:
@@ -108,8 +111,8 @@ def create_partitioning_fn(group_size: int,
     return fn
 
 
-def create_export_fn(path: str, extension: str) -> Callable[[DataTuple, int], None]:
-    def fn(arrays: DataTuple, partition: int) -> None:
+def create_export_fn(path: str, extension: str) -> Callable[[xtype.DataTuple, int], None]:
+    def fn(arrays: xtype.DataTuple, partition: int) -> None:
         import tempfile
         import uuid
         temporary_path = os.path.join(tempfile.gettempdir(), '{}.{}'.format(uuid.uuid4(), extension))
@@ -121,12 +124,13 @@ def create_export_fn(path: str, extension: str) -> Callable[[DataTuple, int], No
 
         logger.info('Copying %s to %s', temporary_path, file_path)
         tf.io.gfile.copy(src=temporary_path, dst=file_path, overwrite=True)
+
     return fn
 
 
-def agg_fn(dts: List[DataTuple]) -> DataTuple:
+def agg_fn(dts: List[xtype.DataTuple]) -> xtype.DataTuple:
     xs, ys = list(zip(*dts))
-    xs = np.reshape(np.concatenate(xs, axis=0), newshape=(-1, xmath.SeqOp.multiply(constants.FMNIST_DIMENSIONS)))
+    xs = np.reshape(np.concatenate(xs, axis=0), newshape=(-1, xmath.SeqOp.multiply(constants.FMNIST_UP_DIMENSIONS)))
     ys = np.concatenate(ys)
     return xs, ys
 

@@ -33,7 +33,7 @@ def build_features(paths: List[str], batch_size: int, num_threads: int, buffer_s
 
     dataset = tf.data.Dataset.from_generator(load,
                                              output_types=(tf.float32, tf.int32),
-                                             output_shapes=([xmath.SeqOp.multiply(constants.FMNIST_DIMENSIONS)], []))
+                                             output_shapes=([xmath.SeqOp.multiply(constants.FMNIST_UP_DIMENSIONS)], []))
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.prefetch(buffer_size)
     dataset = dataset.map(process_fn, num_parallel_calls=num_threads)

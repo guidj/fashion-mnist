@@ -68,7 +68,7 @@ class FCNN(LTModel):
         return ds
 
     def feature_columns_spec(self) -> List[Any]:
-        image_size = xmath.SeqOp.multiply(constants.FMNIST_DIMENSIONS)
+        image_size = xmath.SeqOp.multiply(constants.FMNIST_UP_DIMENSIONS)
         return [tf.feature_column.numeric_column('image',
                                                  shape=(image_size,), )]
 
