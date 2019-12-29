@@ -7,13 +7,23 @@ from fmnist.learning.arch import base
 
 
 class FCNN(base.LTModel):
+    """
+    Fully connected neural network.
+    """
     def __init__(self, dropout_rate: float, num_classes: int, activation: Optional[str],
                  num_layers: int, layer_size: int, optimizer: tf.keras.optimizers.Optimizer,
                  label_index: Dict[str, int], label_weights: Dict[str, float],
                  num_threads: int):
         """
-        Creates a model function
-        :return: model_fn of type (features_dict, labels, mode) -> :class:`tf.estimator.EstimatorSpec`
+        :param dropout_rate: Dropout rate for each layer
+        :param num_classes: Number of classes in classifier
+        :param activation: Choice as a string (e.g. elu)
+        :param num_layers: Number of layers in the network
+        :param layer_size: Number of neurons per fully connected layer
+        :param optimizer: Choice as a string (e.g. adamax)
+        :param label_index: Map of string -> index (e.g. house -> 1)
+        :param label_weights: Map of string -> weight (e.g. dog -> 0.7)
+        :param num_threads: For internal data processing steps
         """
         self.num_threads = num_threads
         self.label_index = label_index
@@ -34,10 +44,13 @@ class FCNN(base.LTModel):
 
         self._m = tf.keras.Sequential(layers)
         self._m.compile(optimizer=optimizer,
-                        loss='categorical_crossentropy',
-                        metrics=[tf.keras.metrics.CategoricalAccuracy()])
+                        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+                        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
     def preproc(self, ds: tf.data.Dataset) -> tf.data.Dataset:
+        """
+        No pre-processing required.
+        """
         return ds
 
     def feature_columns_spec(self) -> List[Any]:
