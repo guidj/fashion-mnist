@@ -17,7 +17,7 @@ def parse_args():
     Parse cmd arguments
     :return: :class:`ArgumentParser` instance
     """
-    arg_parser = argparse.ArgumentParser(description='FMNIST (VGG19 Embeddings) Deep Neural Network')
+    arg_parser = argparse.ArgumentParser(description='FMNIST Prediction')
     arg_parser.add_argument('--batch-size', type=int, default=64, help='Batch size')
     arg_parser.add_argument('--buffer-size', type=int, default=1024, help='Capacity for the reading queue')
     arg_parser.add_argument('--num-threads', type=int, default=1, help='Number of threads for processing data')

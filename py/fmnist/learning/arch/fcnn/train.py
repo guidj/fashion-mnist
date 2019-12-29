@@ -19,7 +19,7 @@ def parse_args() -> argparse.Namespace:
     Parse cmd arguments
     :return: :class:`ArgumentParser` instance
     """
-    arg_parser = argparse.ArgumentParser(description='FMNIST (VGG19 Embeddings) Deep Neural Network')
+    arg_parser = argparse.ArgumentParser(description='FMNIST FCNN Deep Neural Network')
     arg_parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate')
     arg_parser.add_argument('--dropout-rate', type=float, default=0.3, help='Dropout rate')
     arg_parser.add_argument('--num-layers', type=int, default=4,
@@ -59,8 +59,10 @@ def create_optimizer(choice: str, **params) -> tf.keras.optimizers.Optimizer:
 
 
 def train(base_data_dir: str, num_threads: int, buffer_size: int, batch_size: int, num_epochs: int, shuffle: bool,
-          job_dir: str, model_dir: str, learning_rate: float, dropout_rate: float, activation: str,
-          num_layers: int, layer_size: int, optimizer_name: str) -> Tuple[Dict[str, Any], pathlib.Path]:
+          job_dir: str, model_dir: str,
+          learning_rate: float, dropout_rate: float, activation: str,
+          num_layers: int, layer_size: int,
+          optimizer_name: str) -> Tuple[Dict[str, Any], pathlib.Path]:
     trn_paths = task.resolve_data_path(base_data_dir, 'train')
     val_paths = task.resolve_data_path(base_data_dir, 'val')
 
@@ -123,8 +125,8 @@ def main():
     base_data_dir = os.path.join(args.train_data, constants.DataPaths.INTERIM)
     metrics, export_path = train(base_data_dir, num_threads=args.num_threads, buffer_size=args.buffer_size,
                                  batch_size=args.batch_size, num_epochs=args.num_epochs, shuffle=args.shuffle,
-                                 job_dir=args.job_dir, model_dir=args.model_dir, learning_rate=args.lr,
-                                 dropout_rate=args.dropout_rate, activation=args.activation,
+                                 job_dir=args.job_dir, model_dir=args.model_dir,
+                                 learning_rate=args.lr, dropout_rate=args.dropout_rate, activation=args.activation,
                                  num_layers=args.num_layers, layer_size=args.layer_size,
                                  optimizer_name=args.optimizer)
 
