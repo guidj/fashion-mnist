@@ -9,6 +9,7 @@ function run(){
 
     cd ${DIR}/../py
 
+    rm -rf build/ dist/
     python setup.py bdist_egg
 }
 

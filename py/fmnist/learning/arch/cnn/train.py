@@ -9,7 +9,7 @@ import tensorflow as tf
 from fmnist import constants
 from fmnist.data import metadata
 from fmnist.learning import task
-from fmnist.learning.arch.fcnn import network
+from fmnist.learning.arch.cnn import network
 
 logger = logging.getLogger('tensorflow')
 
@@ -19,12 +19,18 @@ def parse_args() -> argparse.Namespace:
     Parse cmd arguments
     :return: :class:`ArgumentParser` instance
     """
-    arg_parser = argparse.ArgumentParser(description='FMNIST FCNN Deep Neural Network')
+    arg_parser = argparse.ArgumentParser(description='FMNIST ConvStrix Deep Neural Network')
     arg_parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate')
-    arg_parser.add_argument('--dropout-rate', type=float, default=0.3, help='Dropout rate')
-    arg_parser.add_argument('--num-layers', type=int, default=4,
-                            help='Use this to create a deep model, so you can see trade-offs in compute vs IO')
-    arg_parser.add_argument('--layer-size', type=int, default=512, help='Number of neurons per layer')
+    arg_parser.add_argument('--num-blocks', type=int, default=3,
+                            help='Number of convolutional blocks')
+    arg_parser.add_argument('--block-size', type=int, default=3,
+                            help='Number of convolutional layers per block')
+    arg_parser.add_argument('--fcl-num-layers', type=int, default=4,
+                            help='Number of layers in the fully connected block')
+    arg_parser.add_argument('--fcl-layer-size', type=int, default=512,
+                            help='Number of neurons per layer in the fully connected block')
+    arg_parser.add_argument('--fcl-dropout-rate', type=float, default=0.3,
+                            help='Dropout rate for the fully connected block')
     arg_parser.add_argument('--activation', type=str, nargs='?', default='relu')
     arg_parser.add_argument('--num-epochs', type=int, default=1, help='Num training epochs')
     arg_parser.add_argument('--batch-size', type=int, default=64, help='Batch size')
@@ -60,8 +66,9 @@ def create_optimizer(choice: str, **params) -> tf.keras.optimizers.Optimizer:
 
 def train(base_data_dir: str, num_threads: int, buffer_size: int, batch_size: int, num_epochs: int, shuffle: bool,
           job_dir: str, model_dir: str,
-          learning_rate: float, dropout_rate: float, activation: str,
-          num_layers: int, layer_size: int,
+          learning_rate: float, activation: str,
+          num_blocks: int, block_size: int,
+          fcl_num_layers: int, fcl_layer_size: int, fcl_dropout_rate: float,
           optimizer_name: str) -> Tuple[Dict[str, Any], pathlib.Path]:
     trn_paths = task.resolve_data_path(base_data_dir, 'train')
     val_paths = task.resolve_data_path(base_data_dir, 'val')
@@ -86,15 +93,18 @@ def train(base_data_dir: str, num_threads: int, buffer_size: int, batch_size: in
 
     optimizer = create_optimizer(optimizer_name, learning_rate=learning_rate)
 
-    m = network.FCNN(dropout_rate=dropout_rate,
-                     num_classes=constants.FMNIST_NUM_CLASSES,
-                     activation=activation,
-                     num_layers=num_layers,
-                     optimizer=optimizer,
-                     layer_size=layer_size,
-                     label_index=metadata.LABEL_INDEX,
-                     label_weights=metadata.LABEL_WEIGHTS,
-                     num_threads=num_threads)
+    m = network.ConvStrix(
+        num_classes=constants.FMNIST_NUM_CLASSES,
+        activation=activation,
+        num_blocks=num_blocks,
+        block_size=block_size,
+        fcl_num_layers=fcl_num_layers,
+        fcl_layer_size=fcl_layer_size,
+        fcl_dropout_rate=fcl_dropout_rate,
+        optimizer=optimizer,
+        label_index=metadata.LABEL_INDEX,
+        label_weights=metadata.LABEL_WEIGHTS,
+        num_threads=num_threads)
 
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=job_dir, histogram_freq=1, update_freq='epoch')
     callbacks = [tensorboard_callback]
@@ -117,7 +127,7 @@ def train(base_data_dir: str, num_threads: int, buffer_size: int, batch_size: in
 
 def main():
     """
-    Runs training and evaluating of ƒmnist on a neural network
+    Runs training and evaluating of ƒmnist on a convolutional neural network
     :return:
     """
     args = parse_args()
@@ -125,8 +135,10 @@ def main():
     metrics, export_path = train(base_data_dir, num_threads=args.num_threads, buffer_size=args.buffer_size,
                                  batch_size=args.batch_size, num_epochs=args.num_epochs, shuffle=args.shuffle,
                                  job_dir=args.job_dir, model_dir=args.model_dir,
-                                 learning_rate=args.lr, dropout_rate=args.dropout_rate, activation=args.activation,
-                                 num_layers=args.num_layers, layer_size=args.layer_size,
+                                 learning_rate=args.lr, activation=args.activation,
+                                 num_blocks=args.num_blocks, block_size=args.block_size,
+                                 fcl_dropout_rate=args.fcl_dropout_rate,
+                                 fcl_num_layers=args.fcl_num_layers, fcl_layer_size=args.fcl_layer_size,
                                  optimizer_name=args.optimizer)
 
 

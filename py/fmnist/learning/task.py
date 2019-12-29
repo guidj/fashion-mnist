@@ -46,7 +46,7 @@ def resolve_data_path(basedir: str, phase: str) -> List[str]:
     return glob.glob(os.path.join(basedir, phase, 'part-*'))
 
 
-def export_model(model: base.LTModel, export_dir: str) -> None:
+def export_model(model: base.BaseModel, export_dir: str) -> None:
     path = os.path.join(export_dir, str(int(time.time())))
     xpath.prepare_path(path, clean=True)
     logger.info('Saving to path %s', path)

@@ -6,20 +6,26 @@ from fmnist import xmath, constants
 from fmnist.learning.arch import base
 
 
-class FCNN(base.BaseModel):
+class ConvStrix(base.BaseModel):
     """
-    Fully connected neural network.
+    Convolutional neural architecture inspired by VGG.
+    There are blocks of convolution followed by pooling.
+    Each block has the same number of filter in each conv layer, and this number for the next block.
     """
-    def __init__(self, dropout_rate: float, num_classes: int, activation: Optional[str],
-                 num_layers: int, layer_size: int, optimizer: tf.keras.optimizers.Optimizer,
+
+    def __init__(self, num_classes: int, activation: Optional[str], num_blocks: int, block_size: int,
+                 fcl_num_layers: int, fcl_layer_size: int, fcl_dropout_rate: float,
+                 optimizer: tf.keras.optimizers.Optimizer,
                  label_index: Dict[str, int], label_weights: Dict[str, float],
                  num_threads: int):
         """
-        :param dropout_rate: Dropout rate for each layer
         :param num_classes: Number of classes in classifier
         :param activation: Choice as a string (e.g. elu)
-        :param num_layers: Number of layers in the network
-        :param layer_size: Number of neurons per fully connected layer
+        :param num_blocks: For the convolutional blocks
+        :param block_size: Number of convolutional layers in each block
+        :param fcl_num_layers: Number of layers in the fully connected block
+        :param fcl_layer_size: Number of neurons per fully connected layer
+        :param fcl_dropout_rate: Dropout rate for fully connected layers
         :param optimizer: Choice as a string (e.g. adamax)
         :param label_index: Map of string -> index (e.g. house -> 1)
         :param label_weights: Map of string -> weight (e.g. dog -> 0.7)
@@ -30,12 +36,25 @@ class FCNN(base.BaseModel):
         self.label_weights = label_weights
 
         feature_layer = tf.keras.layers.DenseFeatures(self.feature_columns_spec(), name='input')
+        i3d_conversion_layer = base.FlatTo3DImageLayer(image_2d_dimensions=constants.FMNIST_L_DIMENSIONS)
 
-        layers = [feature_layer]
+        layers = [feature_layer, i3d_conversion_layer]
+        initial_num_filters = 32
 
-        for _ in range(num_layers):
-            layers.append(tf.keras.layers.Dense(layer_size, activation=activation))
-            layers.append(tf.keras.layers.Dropout(dropout_rate))
+        for block_id in range(num_blocks):
+            num_filters = initial_num_filters * (block_id + 1)
+            for _ in range(block_size):
+                layers.append(tf.keras.layers.Conv2D(filters=num_filters, kernel_size=(3, 3), padding='valid',
+                                                     activation=activation))
+            if block_id + 1 < num_blocks:
+                layers.append(tf.keras.layers.BatchNormalization())
+                layers.append(tf.keras.layers.MaxPooling2D(pool_size=(2, 2)))
+
+        layers.append(tf.keras.layers.Flatten())
+
+        for _ in range(fcl_num_layers):
+            layers.append(tf.keras.layers.Dense(fcl_layer_size, activation=activation))
+            layers.append(tf.keras.layers.Dropout(fcl_dropout_rate))
 
         final_layer = tf.keras.layers.Dense(num_classes, activation='softmax', name='softmax')
         layers.append(final_layer)
@@ -49,7 +68,7 @@ class FCNN(base.BaseModel):
 
     def preproc(self, ds: tf.data.Dataset) -> tf.data.Dataset:
         """
-        No pre-processing required.
+        No pre-processing necessary for training data
         """
         return ds
 
