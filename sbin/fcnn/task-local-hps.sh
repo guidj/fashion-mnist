@@ -5,7 +5,7 @@ set -xe
 function run(){
 
     DIR=$(dirname $0)
-    BASE=${DIR}/..
+    BASE=${DIR}/../..
     SBIN=${BASE}/sbin
     source ${SBIN}/env.sh
     cd ${BASE}
@@ -17,9 +17,14 @@ function run(){
     now=`date +%s`
     job_id="fme_${now}-XXXXXXX"
     TMP_DIR=$(mktemp -d -t $job_id)
-    python -m fmnist.learning.predict \
+    python -m fmnist.hps.tune \
         --train-data "${HOME}/code/fashion-mnist/data" \
-        --model-dir "${1}"
+        --job-dir "${TMP_DIR}/job_dir" \
+        --model-dir "${TMP_DIR}/model_dir" \
+        --num-threads 4 \
+        --num-epochs 50 \
+        --max-evaluations 200 "$@"
+    cp -r "${TMP_DIR}" "${HOME}/"
 }
 
 run "$@"

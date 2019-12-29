@@ -2,6 +2,7 @@ import argparse
 import logging
 import os.path
 
+import tensorflow as tf
 import numpy as np
 
 from fmnist import constants
@@ -16,7 +17,7 @@ def parse_args():
     Parse cmd arguments
     :return: :class:`ArgumentParser` instance
     """
-    arg_parser = argparse.ArgumentParser(description='FMNIST (VGG19 Embeddings) Deep Neural Network')
+    arg_parser = argparse.ArgumentParser(description='FMNIST Prediction')
     arg_parser.add_argument('--batch-size', type=int, default=64, help='Batch size')
     arg_parser.add_argument('--buffer-size', type=int, default=1024, help='Capacity for the reading queue')
     arg_parser.add_argument('--num-threads', type=int, default=1, help='Number of threads for processing data')
@@ -33,7 +34,7 @@ def parse_args():
 
 def generate_classification_report(y_true, y_pred, target_names):
     from sklearn.metrics import classification_report
-    print(classification_report(y_true, y_pred=y_pred, target_names=target_names))
+    logger.info(classification_report(y_true, y_pred=y_pred, target_names=target_names))
 
 
 def main():
@@ -44,10 +45,10 @@ def main():
     args = parse_args()
 
     base_data_dir = os.path.join(args.train_data, constants.DataPaths.INTERIM)
-    (val_x_path, val_y_path) = task.resolve_data_path(base_data_dir, 'val')
+    tst_path = task.resolve_data_path(base_data_dir, 'test')
 
     logger.info('Loading data from %s', base_data_dir)
-    val_dataset = task.build_features(val_x_path, val_y_path,
+    tst_dataset = task.build_features(tst_path,
                                       num_threads=args.num_threads,
                                       buffer_size=args.buffer_size,
                                       batch_size=args.batch_size,
@@ -58,7 +59,7 @@ def main():
 
     labels = []
     predictions = []
-    for features, label in val_dataset:
+    for features, label in tst_dataset:
         prediction = model.predict(features)
         labels.extend(label)
         predictions.extend(np.argmax(prediction, axis=1))

@@ -20,7 +20,7 @@ function run(){
 
     python -m fmnist.features.build \
         --train-data "${BASE}/data" \
-        --batch-size 16 \
+        --batch-size 64 \
         --job-dir "${TMP_DIR}/job_dir"
 }
 
