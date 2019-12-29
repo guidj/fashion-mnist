@@ -5,7 +5,7 @@ set -xe
 function run(){
 
     DIR=$(dirname $0)
-    BASE=${DIR}/../..
+    BASE=${DIR}/..
     SBIN=${BASE}/sbin
     source ${SBIN}/env.sh
     cd ${BASE}
