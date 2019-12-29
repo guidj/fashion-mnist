@@ -2,7 +2,7 @@ import argparse
 import multiprocessing as mp
 import os
 import os.path
-from typing import Tuple, Callable, List, Iterator, Iterable
+from typing import Tuple, Callable, List, Iterator, Iterable, Any
 
 import numpy as np
 import pandas as pd
@@ -18,8 +18,8 @@ MP_THREADS = mp.cpu_count()
 
 def data_frame_split(df: pd.DataFrame, left_fraction: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
     indexes = [v for v in range(len(df))]
-    train_idx, test_idx = model_selection.train_test_split(indexes, train_size=left_fraction)
-    return df.iloc[train_idx, :], df.iloc[test_idx, :]
+    left_idx, right_idx = model_selection.train_test_split(indexes, train_size=left_fraction)
+    return df.iloc[left_idx, :], df.iloc[right_idx, :]
 
 
 def create_path_fn(base: str) -> Callable[[str, str], str]:
@@ -61,13 +61,17 @@ def create_data_generator(x: np.ndarray,
 
 
 def create_dataset(df: pd.DataFrame) -> tf.data.Dataset:
+    def identity(v: Any) -> Any:
+        return v
     x = np.array(df.iloc[:, 1:])
     y = np.array(df.iloc[:, 0])
 
-    transformer_fns = [tfs.normalize_image_values]
+    transformer_fns = [identity]
+    # image resizing precedes conversion to float values
     post_processor_fns = [tfs.create_resize_image_fn(size=constants.FMNIST_DIMENSIONS,
                                                      new_size=constants.FMNIST_L_DIMENSIONS,
                                                      flatten=True),
+                          tfs.normalize_image_values,
                           tfs.expand]
     generator = create_data_generator(x, y, transformer_fns=transformer_fns, post_processor_fns=post_processor_fns)
 
