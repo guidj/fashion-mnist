@@ -14,6 +14,32 @@ from fmnist.learning.arch import base
 logger = logging.getLogger('tensorflow')
 
 
+class EpochDuration(tf.keras.callbacks.Callback):
+    """
+    Logs epoch duration with a given identifier
+    """
+    def __init__(self, identifier: str):
+        self.__start = None
+        self.identifier = identifier
+        super(EpochDuration, self).__init__()
+
+    def on_epoch_begin(self, epoch, logs=None):
+        self.__start = time.time()
+
+    def on_epoch_end(self, epoch, logs=None):
+        logger.info('Epoch duration for %s -> %.2fs', self.identifier, time.time() - self.__start)
+
+
+def create_default_callbacks(job_dir: str) -> List[tf.keras.callbacks.Callback]:
+    """
+    Creates a set of default callbacks
+    """
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=job_dir, histogram_freq=1, update_freq='epoch')
+    epoch_duration_callback = EpochDuration(identifier=job_dir)
+    early_stopping_callback = tf.keras.callbacks.EarlyStopping(patience=3)
+    return [tensorboard_callback, epoch_duration_callback, early_stopping_callback]
+
+
 def build_features(paths: List[str], batch_size: int, num_threads: int, buffer_size: int,
                    num_epochs: int = None, shuffle: bool = False):
     """

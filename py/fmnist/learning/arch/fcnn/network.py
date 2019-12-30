@@ -58,9 +58,10 @@ class FCNN(base.BaseModel):
         return [tf.feature_column.numeric_column('image',
                                                  shape=(image_size,), )]
 
-    def fit(self, ds: tf.data.Dataset, epochs: int, callbacks: List[tf.keras.callbacks.Callback],
-            verbose: int) -> tf.keras.callbacks.History:
-        return self._m.fit(self.preproc(ds), epochs=epochs, callbacks=callbacks, verbose=verbose)
+    def fit(self, train_ds: tf.data.Dataset, epochs: int, callbacks: List[tf.keras.callbacks.Callback],
+            verbose: int, val_ds: tf.data.Dataset = None, val_epoch_freq: int = 1) -> tf.keras.callbacks.History:
+        return self._m.fit(self.preproc(train_ds), epochs=epochs, callbacks=callbacks, verbose=verbose,
+                           validation_data=val_ds, validation_freq=val_epoch_freq)
 
     def evaluate(self, ds: tf.data.Dataset, callbacks, verbose: int) -> List[float]:
         return self._m.evaluate(ds, callbacks=callbacks)

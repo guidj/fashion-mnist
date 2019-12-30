@@ -1,71 +1,38 @@
+import abc
 import base64
 import hashlib
 import json
-import math
 import numbers
 import os.path
 import pickle
-from typing import Dict, Any, Callable, Optional, List
+from typing import Dict, Any, Optional, List
 
 import hyperopt
 import pandas as pd
 import tensorflow as tf
 
 from fmnist import logger, xpath
-from fmnist.learning.arch.fcnn import train
 
 EVALUATED_PARAMS_FILE = 'best-params.json'
 TRIALS_PICKLE_FILE = 'trials.pickle'
 TRIALS_TABLE_FILE = 'trials.csv'
 
 
+class SpecTuner(abc.ABC):
+    @abc.abstractmethod
+    def param_space(self) -> Dict[str, Any]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def create_wrapper_fn(self, base_data_dir: str, num_threads: int, buffer_size: int, num_epochs: int, shuffle: bool,
+                          job_dir: str, model_dir: str):
+        raise NotImplementedError
+
+
 def create_signature(params: Dict[str, Any]) -> str:
     payload = json.dumps(params, sort_keys=True)
     hsh = hashlib.sha224(payload.encode('utf-8')).hexdigest()
     return base64.b64encode(hsh.encode('utf-8')).decode('utf-8')
-
-
-def create_train_fn(base_data_dir: str, num_threads: int, buffer_size: int, num_epochs: int, shuffle: bool,
-                    job_dir: str, model_dir: str) -> Callable[[Dict[str, Any]], Dict[str, Any]]:
-    def wrapper_fn(params: Dict[str, Any]):
-        signature = create_signature(
-            params=params
-        )
-        task_job_dir = os.path.join(job_dir, signature)
-        task_model_dir = os.path.join(model_dir, signature)
-
-        logger.info('Running with config: %s', params)
-
-        def train_fn(batch_size: int, learning_rate: float, dropout_rate: float, activation: str, num_layers: int,
-                     layer_size: int, optimizer: str) -> Dict[str, Any]:
-
-            hps_loss, status = math.nan, hyperopt.STATUS_FAIL
-
-            try:
-                metrics, export_path = train.train(base_data_dir, num_threads=num_threads, buffer_size=buffer_size,
-                                                   batch_size=batch_size, num_epochs=num_epochs, shuffle=shuffle,
-                                                   job_dir=task_job_dir, model_dir=task_model_dir,
-                                                   learning_rate=learning_rate,
-                                                   dropout_rate=dropout_rate, activation=activation, num_layers=num_layers,
-                                                   layer_size=layer_size, optimizer_name=optimizer)
-                if math.isnan(metrics['sparse_categorical_accuracy']) or math.isnan(metrics['loss']):
-                    status = hyperopt.STATUS_FAIL
-                else:
-                    status = hyperopt.STATUS_OK
-                hps_loss = -math.pow(metrics['sparse_categorical_accuracy'], 2.0)
-            except RuntimeError:
-                pass
-            finally:
-                return {'loss': hps_loss, 'status': status,
-                        'job_dir': task_job_dir, 'model_dir': task_model_dir,
-                        'params': {**params, 'num_epochs': num_epochs}}
-
-        return train_fn(batch_size=params['batch_size'], learning_rate=params['learning_rate'],
-                        dropout_rate=params['dropout_rate'],
-                        activation=params['activation'], num_layers=params['num_layers'],
-                        layer_size=params['layer_size'], optimizer=params['optimizer'])
-
-    return wrapper_fn
 
 
 def convert_trials_to_data_frame(trials: hyperopt.Trials) -> Optional[pd.DataFrame]:
@@ -107,7 +74,7 @@ def export_trials(trials: hyperopt.Trials, path: str) -> None:
         """
         Strips trials to the basic values in order to pickle them
         """
-        trials = hyperopt.Trials()
+        _trials = hyperopt.Trials()
         for tid, trial in enumerate(source.trials):
             docs = hyperopt.Trials().new_trial_docs(
                 tids=[trial['tid']],
@@ -116,9 +83,9 @@ def export_trials(trials: hyperopt.Trials, path: str) -> None:
                 miscs=[trial['misc']]
             )
 
-            trials.insert_trial_docs(docs)
-            trials.refresh()
-        return trials
+            _trials.insert_trial_docs(docs)
+            _trials.refresh()
+        return _trials
 
     trials_pickle_path = os.path.join(path, TRIALS_PICKLE_FILE)
     trials_table_path = os.path.join(path, TRIALS_TABLE_FILE)
