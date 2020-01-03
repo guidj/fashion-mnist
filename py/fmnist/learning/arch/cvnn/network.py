@@ -36,7 +36,8 @@ class ConvStrix(base.BaseModel):
         self.label_weights = label_weights
 
         feature_layer = tf.keras.layers.DenseFeatures(self.feature_columns_spec(), name='input')
-        i3d_conversion_layer = base.FlatTo3DImageLayer(image_2d_dimensions=constants.FMNIST_L_DIMENSIONS)
+        i3d_conversion_layer = base.FlatTo3DImageLayer(image_2d_dimensions=constants.FMNIST_L_DIMENSIONS,
+                                                       expand_as_rgb=False)
 
         layers = [feature_layer, i3d_conversion_layer]
         initial_num_filters = 32
@@ -44,7 +45,7 @@ class ConvStrix(base.BaseModel):
         for block_id in range(num_blocks):
             num_filters = initial_num_filters * (block_id + 1)
             for _ in range(block_size):
-                layers.append(tf.keras.layers.Conv2D(filters=num_filters, kernel_size=(3, 3), padding='valid',
+                layers.append(tf.keras.layers.Conv2D(filters=num_filters, kernel_size=(3, 3), padding='same',
                                                      activation=activation))
             if block_id + 1 < num_blocks:
                 layers.append(tf.keras.layers.BatchNormalization())
@@ -77,9 +78,10 @@ class ConvStrix(base.BaseModel):
         return [tf.feature_column.numeric_column('image',
                                                  shape=(image_size,), )]
 
-    def fit(self, ds: tf.data.Dataset, epochs: int, callbacks: List[tf.keras.callbacks.Callback],
-            verbose: int) -> tf.keras.callbacks.History:
-        return self._m.fit(self.preproc(ds), epochs=epochs, callbacks=callbacks, verbose=verbose)
+    def fit(self, train_ds: tf.data.Dataset, epochs: int, callbacks: List[tf.keras.callbacks.Callback],
+            verbose: int,  val_ds: tf.data.Dataset = None, val_epoch_freq: int = 1) -> tf.keras.callbacks.History:
+        return self._m.fit(self.preproc(train_ds), epochs=epochs, callbacks=callbacks, verbose=verbose,
+                           validation_data=val_ds, validation_freq=val_epoch_freq)
 
     def evaluate(self, ds: tf.data.Dataset, callbacks, verbose: int) -> List[float]:
         return self._m.evaluate(ds, callbacks=callbacks)

@@ -96,12 +96,12 @@ def train(base_data_dir: str, num_threads: int, buffer_size: int, batch_size: in
                      label_weights=metadata.LABEL_WEIGHTS,
                      num_threads=num_threads)
 
-    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=job_dir, histogram_freq=1, update_freq='epoch')
-    callbacks = [tensorboard_callback]
+    callbacks = task.create_default_callbacks(job_dir)
 
     logger.info('Starting training')
 
-    m.fit(trn_dataset, epochs=num_epochs, callbacks=callbacks, verbose=constants.TF_LOG_PER_EPOCH)
+    m.fit(trn_dataset, epochs=num_epochs, callbacks=callbacks, verbose=constants.TF_LOG_PER_EPOCH,
+          val_ds=val_dataset)
     results = m.evaluate(val_dataset, callbacks=callbacks, verbose=constants.TF_LOG_PER_BATCH)
     loss, metrics_values = results[0], results[1:]
 

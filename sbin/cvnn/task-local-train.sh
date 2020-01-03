@@ -17,7 +17,7 @@ function run(){
     now=`date +%s`
     job_id="fme_${now}-XXXXXXX"
     TMP_DIR=$(mktemp -d -t $job_id)
-    python -m fmnist.learning.arch.cnn.train \
+    python -m fmnist.learning.arch.cvnn.train \
         --train-data "${HOME}/code/fashion-mnist/data" \
         --job-dir "${TMP_DIR}/job_dir" \
         --model-dir "${TMP_DIR}/model_dir" \

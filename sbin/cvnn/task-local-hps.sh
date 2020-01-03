@@ -23,8 +23,8 @@ function run(){
         --model-dir "${TMP_DIR}/model_dir" \
         --num-threads 4 \
         --num-epochs 50 \
-        --max-evaluations 100 "$@" \
-        --spec FCNN
+        --max-evaluations 50 "$@" \
+        --spec CVNN
     cp -r "${TMP_DIR}" "${HOME}/"
 }
 
