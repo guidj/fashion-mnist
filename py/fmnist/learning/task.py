@@ -69,7 +69,7 @@ def build_features(paths: List[str], batch_size: int, num_threads: int, buffer_s
 
 
 def resolve_data_path(basedir: str, phase: str) -> List[str]:
-    return glob.glob(os.path.join(basedir, phase, 'part-*'))
+    return tf.io.gfile.glob(os.path.join(basedir, phase, 'part-*'))
 
 
 def export_model(model: base.BaseModel, export_dir: str) -> None:
