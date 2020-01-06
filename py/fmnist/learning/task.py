@@ -36,7 +36,7 @@ def create_default_callbacks(job_dir: str) -> List[tf.keras.callbacks.Callback]:
     """
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=job_dir, histogram_freq=1, update_freq='epoch')
     epoch_duration_callback = EpochDuration(identifier=job_dir)
-    early_stopping_callback = tf.keras.callbacks.EarlyStopping(patience=3)
+    early_stopping_callback = tf.keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True)
     return [tensorboard_callback, epoch_duration_callback, early_stopping_callback]
 
 
