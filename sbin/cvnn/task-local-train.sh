@@ -22,16 +22,16 @@ function run(){
         --job-dir "${TMP_DIR}/job_dir" \
         --model-dir "${TMP_DIR}/model_dir" \
         --num-threads 4 \
-        --num-blocks 4 \
+        --num-blocks 5 \
         --block-size 1 \
-        --fcl-num-layers 2 \
+        --fcl-num-layers 4 \
         --fcl-layer-size 512 \
-        --fcl-dropout-rate 0.05 \
-        --batch-size 64 \
-        --num-epochs 10 \
-        --activation "elu" \
-        --optimizer "nadam" \
-        --lr 0.0006 "$@"
+        --fcl-dropout-rate 0.4 \
+        --batch-size 32 \
+        --num-epochs 50 \
+        --activation "relu" \
+        --optimizer "adamax" \
+        --lr 0.0004 "$@"
 }
 
 run "$@"
