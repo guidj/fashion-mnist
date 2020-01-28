@@ -4,7 +4,7 @@ REQUIRED_PACKAGES = [
     'pandas',
     'numpy',
     'tensorflow==2.0.0',
-    'tensorflow-gpu==2.0.0',
+    'tensorflow-gpu==2.0.1',
     'Keras==2.3.0',
     'opencv-python==4.1.1.26',
     'scikit-learn==0.21.3',
