@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 REQUIRED_PACKAGES = [
     'pandas',
     'numpy',
-    'tensorflow==2.0.0',
+    'tensorflow==2.0.1',
     'tensorflow-gpu==2.0.0',
     'Keras==2.3.0',
     'opencv-python==4.1.1.26',
