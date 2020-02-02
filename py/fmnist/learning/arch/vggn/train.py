@@ -93,7 +93,7 @@ def train(base_data_dir: str, num_threads: int, buffer_size: int, batch_size: in
 
     optimizer = create_optimizer(optimizer_name, learning_rate=learning_rate)
 
-    m = network.VStrix(
+    m = network.VGGStrix(
         num_classes=constants.FMNIST_NUM_CLASSES,
         activation=activation,
         num_blocks=num_blocks,

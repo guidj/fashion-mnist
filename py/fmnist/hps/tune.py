@@ -185,6 +185,7 @@ class VGGNTuner(core.SpecTuner):
             'batch_size': hp.choice('batch_size', options=[2 ** x for x in range(4, 6 + 1)]),
             'learning_rate': hp.loguniform('learning_rate', low=np.log(0.0001), high=np.log(1)),
             'conv': hp.choice('conv', [
+                {'num_blocks': 0, 'block_size': 0},
                 {'num_blocks': 1, 'block_size': scope.int(hp.quniform('block_size', low=1, high=3, q=1))},
                 {'num_blocks': scope.int(hp.quniform('num_blocks', low=2, high=3, q=1)), 'block_size': 1}
             ]),

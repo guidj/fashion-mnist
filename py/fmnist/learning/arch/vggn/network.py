@@ -6,7 +6,7 @@ from fmnist import xmath, constants
 from fmnist.learning.arch import base
 
 
-class VStrix(base.BaseModel):
+class VGGStrix(base.BaseModel):
     """
     Convolutional neural architecture similar to ConvStrix that uses VGG19 as a "first block".
     """
