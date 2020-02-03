@@ -2,7 +2,6 @@ import argparse
 import logging
 import os.path
 
-import tensorflow as tf
 import numpy as np
 
 from fmnist import constants
@@ -33,8 +32,8 @@ def parse_args():
 
 
 def generate_classification_report(y_true, y_pred, target_names):
-    from sklearn.metrics import classification_report
-    logger.info(classification_report(y_true, y_pred=y_pred, target_names=target_names))
+    from sklearn import metrics as sk_metrics
+    logger.info(sk_metrics.classification_report(y_true, y_pred=y_pred, target_names=target_names, digits=3))
 
 
 def main():
