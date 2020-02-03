@@ -5,7 +5,7 @@ Prediction [Fashion-MNIST dataset](https://research.zalando.com/welcome/mission/
 
 Note: some parts of this task can run on GCP's AI-platform, but as of this writing (January 2020), tensorflow 2.0 isn't technically
 support. CPU based computations, however, run just fine. But GPU is rather difficult, since CUDA versions between
-tensorflow 2.0 and AI-platform are currently misaligned -- as I said, tensorflow 2.0 isn't technically support.
+tensorflow 2.0 and AI-platform are currently misaligned -- as I said, tensorflow 2.0 isn't technically supported.
 
 So either deploy a GCE instance with the needed tooling or use an alternative computing environment (e.g. kubeflow).
 
