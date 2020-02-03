@@ -1,11 +1,11 @@
-import os.path
 import argparse
+import os.path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import tensorflow as tf
-from tensorflow.contrib.tensorboard.plugins import projector
+from tensorboard.plugins import projector
 
 from fmnist import logger
 from fmnist.constants import DataPaths
