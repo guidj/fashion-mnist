@@ -54,12 +54,11 @@ The following models are implemented:
 Standard fully connected neural network. Uses images as is, i.e. flattened arrays.
 
 
-### CVNN
+### CVNN: ConvStrix
 
 Convolutional network, inspired by VGG. It uses blocks with sequential convolutional steps, followed by
 normalization, and pooling.
 
-### VGG19-FCNN [WIP]
+### Transfer learning with VGG19: VGGStrix
 
-A model that uses embeddings from VGG19 and feeds them to a fully connected block. Basically, a transfer learning
-model.
+A model that uses embeddings from VGG19 and feeds them to a fully connected block. There can also be convolutional blocks before the fully connected ones.
