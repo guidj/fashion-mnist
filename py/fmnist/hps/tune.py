@@ -28,7 +28,7 @@ def parse_args() -> argparse.Namespace:
     :return: :class:`ArgumentParser` instance
     """
     arg_parser = argparse.ArgumentParser(description='FMNIST HyperParameter Search')
-    arg_parser.add_argument('--spec', type=str, choices=[Spec.FCNN.name, Spec.CVNN.name],
+    arg_parser.add_argument('--spec', type=str, choices=[Spec.FCNN.name, Spec.CVNN.name, Spec.VGGN.name],
                             help='Model to tune.')
     arg_parser.add_argument('--num-epochs', type=int, default=2, help='Num training epochs for each experiment run')
     arg_parser.add_argument('--buffer-size', type=int, default=256, help='Capacity for the reading queue')
@@ -53,6 +53,7 @@ def parse_args() -> argparse.Namespace:
 class Spec(enum.Enum):
     FCNN = 'FCNN'
     CVNN = 'CVNN'
+    VGGN = 'VGGN'
 
 
 class FCNNTuner(core.SpecTuner):
@@ -178,11 +179,84 @@ class CVNNTuner(core.SpecTuner):
         return wrapper_fn
 
 
+class VGGNTuner(core.SpecTuner):
+    def param_space(self) -> Dict[str, Any]:
+        return {
+            'batch_size': hp.choice('batch_size', options=[2 ** x for x in range(4, 6 + 1)]),
+            'learning_rate': hp.loguniform('learning_rate', low=np.log(0.0001), high=np.log(1)),
+            'conv': hp.choice('conv', [
+                {'num_blocks': 0, 'block_size': 0},
+                {'num_blocks': 1, 'block_size': scope.int(hp.quniform('block_size', low=1, high=3, q=1))},
+                {'num_blocks': scope.int(hp.quniform('num_blocks', low=2, high=3, q=1)), 'block_size': 1}
+            ]),
+            'fcl_num_layers': scope.int(hp.quniform('fcl_num_layers', low=1, high=4, q=1)),
+            'fcl_layer_size': hp.choice('fcl_layer_size', options=[512, 768, 1024, 1536]),
+            'fcl_dropout_rate': hp.quniform('fcl_dropout_rate', low=0.05, high=0.5, q=0.05),
+            'activation': hp.choice('activation', options=['relu', 'selu', 'tanh']),
+            'optimizer': hp.choice('optimizer', options=['adam', 'adamax', 'nadam', 'rms-prop'])
+        }
+
+    def create_wrapper_fn(self, base_data_dir: str, num_threads: int, buffer_size: int, num_epochs: int, shuffle: bool,
+                          job_dir: str, model_dir: str):
+        def wrapper_fn(guess_params: Dict[str, Any]):
+            params = {k: v for k, v in guess_params.items() if not isinstance(v, dict)}
+            params['num_blocks'] = guess_params['conv']['num_blocks']
+            params['block_size'] = guess_params['conv']['block_size']
+            signature = core.create_signature(
+                params={**params, 'class': self.__class__.__name__}
+            )
+            task_job_dir = os.path.join(job_dir, signature)
+            task_model_dir = os.path.join(model_dir, signature)
+
+            logger.info('Running with config: %s', params)
+
+            def train_fn(batch_size: int, learning_rate: float, fcl_dropout_rate: float, activation: str,
+                         num_blocks: int, block_size: int,
+                         fcl_num_layers: int, fcl_layer_size: int,
+                         optimizer: str) -> Dict[str, Any]:
+                from fmnist.learning.arch.vggn import train
+                hps_loss, status = math.nan, hyperopt.STATUS_FAIL
+
+                try:
+                    metrics, export_path = train.train(base_data_dir, num_threads=num_threads,
+                                                       buffer_size=buffer_size,
+                                                       batch_size=batch_size, num_epochs=num_epochs,
+                                                       shuffle=shuffle,
+                                                       job_dir=task_job_dir, model_dir=task_model_dir,
+                                                       learning_rate=learning_rate,
+                                                       num_blocks=num_blocks, block_size=block_size,
+                                                       fcl_dropout_rate=fcl_dropout_rate, activation=activation,
+                                                       fcl_num_layers=fcl_num_layers,
+                                                       fcl_layer_size=fcl_layer_size, optimizer_name=optimizer)
+                    if math.isnan(metrics['sparse_categorical_accuracy']) or math.isnan(metrics['loss']):
+                        status = hyperopt.STATUS_FAIL
+                    else:
+                        status = hyperopt.STATUS_OK
+                    hps_loss = -math.pow(metrics['sparse_categorical_accuracy'], 2.0)
+                except Exception as err:
+                    logger.error(err)
+                finally:
+                    return {'loss': hps_loss, 'status': status,
+                            'job_dir': task_job_dir, 'model_dir': task_model_dir,
+                            'params': {**params, 'num_epochs': num_epochs, 'tuner': self.__class__.__name__}}
+
+            return train_fn(batch_size=params['batch_size'], learning_rate=params['learning_rate'],
+                            fcl_dropout_rate=params['fcl_dropout_rate'],
+                            activation=params['activation'],
+                            num_blocks=params['num_blocks'], block_size=params['block_size'],
+                            fcl_num_layers=params['fcl_num_layers'],
+                            fcl_layer_size=params['fcl_layer_size'], optimizer=params['optimizer'])
+
+        return wrapper_fn
+
+
 def create_spec_tuner(spec: Spec) -> core.SpecTuner:
     if spec == Spec.FCNN:
         return FCNNTuner()
     elif spec == Spec.CVNN:
         return CVNNTuner()
+    elif spec == Spec.VGGN:
+        return VGGNTuner()
 
 
 def tune(param_space: Dict[str, Any], objective_fn: Callable[[Dict[str, Any]], Dict[str, Any]], max_evaluations: int,
