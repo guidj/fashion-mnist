@@ -39,6 +39,16 @@ And for hyper-parameter tuning it's:
 $ bash ./sbin/{model}/task-local-hps.sh
 ```
 
+## Evaluation
+
+You can run predictions on a trained and get evaluation scores
+
+```sh
+$ bash ./sbin/task-local-predict.sh /path/to/model
+```
+
+`/path/to/path` can be found when model training completes and model is exported.
+
 ## Models
 
 All models share a common data pre-processing steps:
