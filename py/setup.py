@@ -5,7 +5,7 @@ REQUIRED_PACKAGES = [
     'numpy',
     'tensorflow==2.0.1',
     'Keras==2.3.0',
-    'opencv-python==4.1.1.26',
+    'opencv-python==4.2.0.32',
     'scikit-learn==0.21.3',
     'gcsfs==0.3.1',
     'hyperopt==0.2.2',
