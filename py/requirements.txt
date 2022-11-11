@@ -7,7 +7,7 @@ gcsfs==0.3.1
 Keras==2.3.0
 kaggle>=1.5,<1.6
 hyperopt==0.2.2
-pyspark==2.4.4
+pyspark==3.2.2
 cloudpickle==1.2.2
 pillow==8.3.2
 

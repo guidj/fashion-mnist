@@ -9,7 +9,7 @@ REQUIRED_PACKAGES = [
     'scikit-learn==0.21.3',
     'gcsfs==0.3.1',
     'hyperopt==0.2.2',
-    'pyspark==2.4.4',
+    'pyspark==3.2.2',
     'cloudpickle==1.2.2'
 ]
 
